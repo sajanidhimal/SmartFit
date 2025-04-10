@@ -1,3 +1,5 @@
+
+//home.tsx
 import React, { useState } from 'react';
 import { View, Text, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -5,6 +7,7 @@ import { useRouter } from 'expo-router';
 import CircularProgress from '../../components/CircularProgress';
 import MacroCard from '../../components/MacroCard';
 import WeekCalendar from '../../components/WeekCalendar';
+import NutritionTracker from '../../components/NutritionDetail';
 
 // Define types for our data
 interface MacroNutrient {
@@ -56,6 +59,8 @@ export default function HomeScreen() {
   });
 
   // Week days data
+  const [selectedPeriod, setSelectedPeriod] = useState('Daily');
+
   const [weekDays, setWeekDays] = useState([
     { day: 'Sun', date: 22, active: false },
     { day: 'Mon', date: 23, active: false },
@@ -72,6 +77,19 @@ export default function HomeScreen() {
     percentage: 57,
     goalPercentage: 77,
     goal: 2157
+  };
+
+  const getProgressData = () => {
+    // Mock data for the progress chart
+    return [
+      { label: 'Sun', actual: 60, total: 100 },
+      { label: 'Mon', actual: 75, total: 100 },
+      { label: 'Tue', actual: 85, total: 100 },
+      { label: 'Wed', actual: 70, total: 100 },
+      { label: 'Thu', actual: 90, total: 100 },
+      { label: 'Fri', actual: 65, total: 100 },
+      { label: 'Sat', actual: 80, total: 100 },
+    ];
   };
 
   const selectDay = (index: number) => {
@@ -93,10 +111,10 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-100">
-      <ScrollView className="flex-1 px-4">
+    <SafeAreaView className="flex-1 bg-gray-100 w-full">
+      <ScrollView className="flex-1 px-4 mb-16 w-full">
         {/* Header */}
-        <View className="flex-row justify-between items-center py-6">
+        <View className="flex-row justify-between items-center py-6 w-full">
           <View>
             <Text className="text-lg text-gray-500">Welcome</Text>
             <Text className="text-3xl font-bold text-gray-800">Talha Ch!</Text>
@@ -107,9 +125,9 @@ export default function HomeScreen() {
         </View>
 
         {/* Main Card */}
-        <View className="bg-white rounded-2xl p-4 shadow">
+        <View className="bg-white rounded-2xl px-4 py-2 shadow flex items-center mb-2">
           {/* Calorie Progress */}
-          <View className="flex-row justify-between mb-6">
+          <View className="flex-row justify-between mb-6 items-end flex mb-2 gap-16">
             <View className="flex-1 items-center">
               <CircularProgress
                 size={150}
@@ -147,7 +165,7 @@ export default function HomeScreen() {
           </View>
 
           {/* Macro Nutrients */}
-          <View className="flex-row space-x-2">
+          <View className="flex-row space-x-4 flex gap-2">
             <MacroCard 
               title="Protein"
               current={dailyStats.macros.protein.current}
@@ -157,7 +175,6 @@ export default function HomeScreen() {
               progressColor="#d46b08"
               textColor="text-protein-text"
             />
-            
             <MacroCard 
               title="Fats"
               current={dailyStats.macros.fats.current}
@@ -189,13 +206,22 @@ export default function HomeScreen() {
         />
 
         {/* Water Balance */}
-        <View className="bg-white rounded-lg p-4 flex-row items-center justify-between shadow mb-4">
-          <View className="w-16 h-24 border-2 border-blue-300 rounded-lg overflow-hidden relative">
+        <View className="bg-white rounded-lg p-4 flex-row items-center justify-between shadow mb-4 w-full">
+            <View className="w-16 h-24 relative">
+            {/* Glass outline */}
+            <View className="absolute inset-0 bg-blue-100 rounded-t-lg rounded-b-3xl border-2 border-blue-300" />
+            {/* Water fill */}
             <View 
-              className="absolute bottom-0 left-0 right-0 bg-blue-400" 
-              style={{ height: `${(dailyStats.water.current / dailyStats.water.goal) * 100}%` }}
+              className="absolute bottom-0 left-0 right-0 bg-blue-400 rounded-b-3xl"
+              style={{ 
+              height: `${(dailyStats.water.current / dailyStats.water.goal) * 100}%`,
+              borderTopLeftRadius: 4,
+              borderTopRightRadius: 4
+              }}
             />
-          </View>
+            {/* Glass shine effect */}
+            <View className="absolute top-1 right-2 w-2 h-12 bg-white/20 rounded-full" />
+            </View>
           
           <View className="flex-1 px-4">
             <Text className="text-lg font-medium text-gray-700">Water Balance</Text>
@@ -215,7 +241,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Calories Section */}
+        {/* Calories Section
         <View className="bg-white rounded-lg p-4 shadow mb-16">
           <View className="flex-row justify-between items-center mb-2">
             <Text className="text-2xl font-bold text-secondary">Calories</Text>
@@ -225,7 +251,51 @@ export default function HomeScreen() {
           <Text className="text-gray-600">
             Your average daily calories consumption is {calorieStats.average} kcal which is {calorieStats.goalPercentage}% of your goal ({calorieStats.goal} kcal)
           </Text>
-        </View>
+            <View className="mt-2">
+            <Text className="text-lg font-semibold mb-8">{selectedPeriod} Progress</Text>
+            <View className="h-40 flex-row items-end justify-between">
+              {getProgressData().map((item, index) => (
+              <View key={index} className="items-center">
+                <View 
+                className="w-8 bg-secondary/20 rounded-t-lg"
+                style={{ 
+                  height: `${item.total}%`,
+                }}
+                >
+                <View 
+                  className="w-full bg-secondary rounded-t-lg"
+                  style={{ 
+                  height: `${item.actual}%`,
+                  }}
+                />
+                </View>
+                <Text className="text-xs text-gray-500 mt-1">{item.label}</Text>
+              </View>
+              ))}
+            </View>
+            <View className="flex-row justify-between mt-4 mb-2">
+            {['Daily', 'Weekly', 'Monthly', 'Yearly'].map((period) => (
+              <TouchableOpacity
+              key={period}
+              className={`px-4 py-2 rounded-full ${
+                selectedPeriod === period ? 'bg-secondary' : 'bg-gray-200'
+              }`}
+              onPress={() => setSelectedPeriod(period)}
+              >
+              <Text
+                className={`${
+                selectedPeriod === period ? 'text-white' : 'text-gray-600'
+                }`}
+              >
+                {period}
+              </Text>
+              </TouchableOpacity>
+            ))}
+            </View>
+          </View>
+        </View> */}
+        
+        <NutritionTracker/>
       </ScrollView>
     </SafeAreaView>
   );
