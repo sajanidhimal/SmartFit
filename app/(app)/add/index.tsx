@@ -48,6 +48,20 @@ export default function AddScreen() {
             <Text className="text-lg font-medium">Add Weight</Text>
             <Ionicons name="chevron-forward" size={24} color="#ccc" style={{ marginLeft: 'auto' }} />
           </TouchableOpacity>
+
+          <TouchableOpacity className="bg-white p-4 rounded-lg flex-row items-center shadow" 
+            
+          >
+            <View className="w-10 h-10 bg-purple-100 rounded-full items-center justify-center mr-4">
+              <Ionicons name="camera-outline" size={24} color="purple" />
+            </View>
+            <Text className="text-lg font-medium">Camera </Text>
+            <Ionicons name="chevron-forward" size={24} color="#ccc" style={{ marginLeft: 'auto' }} />
+          </TouchableOpacity>
+
+        
+
+
         </View>
       </ScrollView>
     </SafeAreaView>
