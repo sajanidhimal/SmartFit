@@ -1,17 +1,35 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import { 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  Image, 
+  StyleSheet, 
+  ActivityIndicator, 
+  Alert, 
+  ScrollView,
+  Modal
+} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
 
 export default function CameraScreen() {
-    const [topImage, setTopImage] = useState<string | null>(null);
-    const [sideImage, setSideImage] = useState<string | null>(null);
-    const [isUploading, setIsUploading] = useState(false);
-    const [response, setResponse] = useState<any>(null);
-    const [showSideView, setShowSideView] = useState(false);
+  const [topImage, setTopImage] = useState<string | null>(null);
+  const [sideImage, setSideImage] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [response, setResponse] = useState<any>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [currentSelection, setCurrentSelection] = useState<'top' | 'side'>('top');
+  const [showResults, setShowResults] = useState(false);
 
-  const handleCameraOpen = async () => {
+  const openImagePicker = (viewType: 'top' | 'side') => {
+    setCurrentSelection(viewType);
+    setShowModal(true);
+  };
+
+  const handleCamera = async () => {
+    setShowModal(false);
+    
     // Request camera permission
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     
@@ -23,21 +41,24 @@ export default function CameraScreen() {
     // Launch camera
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: false,
-      quality: 1,
+      allowsEditing: true,
+      quality: 0.8,
     });
 
     if (!result.canceled) {
-      if (!showSideView) {
+      if (currentSelection === 'top') {
         setTopImage(result.assets[0].uri);
       } else {
         setSideImage(result.assets[0].uri);
       }
-      setResponse(null);  
+      setResponse(null);
+      setShowResults(false);
     }
   };
   
-  const handleImagePick = async () => {
+  const handleGallery = async () => {
+    setShowModal(false);
+    
     // Request media library permission
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     
@@ -49,49 +70,33 @@ export default function CameraScreen() {
     // Launch image library
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: false,
-      quality: 1,
+      allowsEditing: true,
+      quality: 0.8,
     });
 
     if (!result.canceled) {
-      if (!showSideView) {
+      if (currentSelection === 'top') {
         setTopImage(result.assets[0].uri);
       } else {
         setSideImage(result.assets[0].uri);
       }
       setResponse(null);
+      setShowResults(false);
     }
   };
 
-  const clearImages = () => {
-    setTopImage(null);
-    setSideImage(null);
-    setResponse(null);
-  };
-
-  const clearCurrentImage = () => {
-    if (!showSideView) {
-      setTopImage(null);
-    } else {
-      setSideImage(null);
-    }
-    setResponse(null);
-  };
-
-  const uploadImages = async () => {
+  const measureCalories = async () => {
     if (!topImage) {
-      Alert.alert('Error', 'Please select a top view image first');
+      Alert.alert('Error', 'Please capture the top view of the food');
       return;
     }
 
     try {
       setIsUploading(true);
       setResponse(null);
+      setShowResults(false);
 
-    //   const apiUrl = 'http://192.168.18.51:5000/predict';
-    const apiUrl = 'http://10.0.2.2:5000/predict';
-
-      console.log('Attempting to upload to:', apiUrl);
+      const apiUrl = 'http://10.0.2.2:5000/predict';
 
       // Create form data for the upload
       const formData = new FormData();
@@ -106,8 +111,6 @@ export default function CameraScreen() {
         type: topFileType,
       } as any);
 
-      console.log('Added top image with type:', topFileType);
-
       // Add side image if available
       if (sideImage) {
         const sideFilename = sideImage.split('/').pop();
@@ -118,11 +121,7 @@ export default function CameraScreen() {
           name: sideFilename,
           type: sideFileType,
         } as any);
-        console.log('Added side image with type:', sideFileType);
       }
-
-      // Log network state
-      console.log('Starting network request...');
       
       // Make the API request
       try {
@@ -134,34 +133,27 @@ export default function CameraScreen() {
           },
         });
 
-        console.log('Response received with status:', response.status);
-
-        // Parse the response
         const responseData = await response.json();
-        console.log('Response data:', JSON.stringify(responseData).substring(0, 150) + '...');
-        
         setResponse(responseData);
         
         if (responseData.error) {
           Alert.alert('Error', responseData.error);
         } else {
-          Alert.alert('Success', 'Food detected and analyzed successfully!');
+          setShowResults(true);
         }
       } catch (fetchError: any) {
         console.error('Fetch error:', fetchError);
-        // For testing when server is not available, use mock data
         if (fetchError.message && fetchError.message.includes('Network request failed')) {
-          console.log('Using mock data due to network failure');
-          // Mock response for testing UI when server is down
+          // Mock response for testing UI
           const mockResponse = {
             food_detected: [
               {
-                name: "Test Apple",
+                name: "Apple",
                 weight_g: 150.5,
-                calories: 80,
-                protein: 0.3,
-                carbs: 21.0,
-                fats: 0.2,
+                calories: 33.99,
+                protein: 0.20,
+                carbs: 9.15,
+                fats: 0.13,
                 width_mm: 70.0,
                 height_mm: 70.0,
                 depth: 70.0,
@@ -170,426 +162,405 @@ export default function CameraScreen() {
             ]
           };
           setResponse(mockResponse);
-          Alert.alert('Mock Data', 'Using test data - server appears to be down.');
+          setShowResults(true);
         } else {
-          throw fetchError; // Re-throw for the outer catch
+          throw fetchError;
         }
       }
 
     } catch (error: any) {
       console.error('Upload error:', error);
-      
-      // Detailed error message with helpful suggestions
-      const errorMsg = error.message || 'Unknown error';
-      Alert.alert(
-        'Upload Failed', 
-        `There was an error uploading your images: ${errorMsg}
-
-Troubleshooting:
-- Check if your server is running
-- Verify the IP address is correct
-- Make sure your device and server are on the same network`
-      );
-      
-      setResponse({ error: 'Upload failed: ' + errorMsg });
+      Alert.alert('Upload Failed', 'There was an error measuring your food');
     } finally {
       setIsUploading(false);
     }
   };
 
-  const renderPlaceholder = (viewType: string) => (
-    <View style={styles.placeholderContainer}>
-      <Ionicons name="image-outline" size={80} color="#ccc" />
-      <Text style={styles.placeholderText}>
-        No {viewType} view image selected
-      </Text>
-    </View>
+  const renderImagePlaceholder = (viewType: 'top' | 'side') => (
+    <TouchableOpacity 
+      style={styles.imagePlaceholder}
+      onPress={() => openImagePicker(viewType)}
+    >
+      <Ionicons name="camera-outline" size={40} color="#aaa" />
+      <Text style={styles.placeholderText}>Tap to select image</Text>
+    </TouchableOpacity>
   );
 
-  const renderFoodResults = () => {
-    if (!response || !response.food_detected) return null;
-
-    return (
-      <View style={styles.foodResultsContainer}>
-        <Text style={styles.foodResultsTitle}>Detected Food Items:</Text>
-        {response.food_detected.map((food: any, index: number) => (
-          <View key={index} style={styles.foodItemCard}>
-            <Text style={styles.foodName}>{food.name}</Text>
-            <View style={styles.nutritionRow}>
-              <View style={styles.nutritionItem}>
-                <Text style={styles.nutritionValue}>{food.weight_g.toFixed(1)}g</Text>
-                <Text style={styles.nutritionLabel}>Weight</Text>
-              </View>
-              <View style={styles.nutritionItem}>
-                <Text style={styles.nutritionValue}>{food.calories.toFixed(0)}</Text>
-                <Text style={styles.nutritionLabel}>Calories</Text>
-              </View>
-            </View>
-            <View style={styles.macrosRow}>
-              <View style={styles.macroItem}>
-                <Text style={styles.macroValue}>{food.protein.toFixed(1)}g</Text>
-                <Text style={styles.macroLabel}>Protein</Text>
-              </View>
-              <View style={styles.macroItem}>
-                <Text style={styles.macroValue}>{food.carbs.toFixed(1)}g</Text>
-                <Text style={styles.macroLabel}>Carbs</Text>
-              </View>
-              <View style={styles.macroItem}>
-                <Text style={styles.macroValue}>{food.fats.toFixed(1)}g</Text>
-                <Text style={styles.macroLabel}>Fats</Text>
-              </View>
-            </View>
-            <View style={styles.dimensionsRow}>
-              <Text style={styles.dimensionsText}>
-                Size: {food.width_mm.toFixed(1)} × {food.height_mm.toFixed(1)} × {food.depth.toFixed(1)} mm
-              </Text>
-              <Text style={styles.dimensionsText}>
-                Volume: {food.volume_cm3.toFixed(1)} cm³
-              </Text>
-            </View>
-          </View>
-        ))}
-      </View>
-    );
+  const renderImage = (uri: string | null, viewType: 'top' | 'side') => {
+    if (uri) {
+      return (
+        <View style={styles.imageContainer}>
+          <Image source={{ uri }} style={styles.image} />
+          <TouchableOpacity 
+            style={styles.clearButton}
+            onPress={() => viewType === 'top' ? setTopImage(null) : setSideImage(null)}
+          >
+            <Ionicons name="close-circle" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return renderImagePlaceholder(viewType);
   };
 
-  return (
-    <ScrollView style={styles.container}>
-      <View style={styles.mainImageSection}>
-        <Text style={styles.sectionTitle}>Top View Image (Required)</Text>
-        {topImage ? (
-          <View style={styles.imageContainer}>
-            <Image source={{ uri: topImage }} style={styles.image} />
-            <TouchableOpacity 
-              style={styles.clearButton}
-              onPress={() => setTopImage(null)}
-            >
-              <Ionicons name="close-circle" size={30} color="#FF3B30" />
-            </TouchableOpacity>
-          </View>
-        ) : renderPlaceholder('top')}
+  const goBackToCapture = () => {
+    setShowResults(false);
+  };
 
-        <View style={styles.buttonsContainer}>
-          <TouchableOpacity 
-            onPress={handleCameraOpen}
-            style={styles.button}
-            disabled={showSideView}
-          >
-            <Ionicons name="camera" size={20} color="white" style={styles.buttonIcon} />
-            <Text style={styles.buttonText}>Camera</Text>
+  if (showResults && response && response.food_detected && response.food_detected.length > 0) {
+    const food = response.food_detected[0];
+    
+    return (
+      <View style={styles.container}>
+        <View style={styles.resultHeader}>
+          <TouchableOpacity onPress={goBackToCapture} style={styles.backButton}>
+            <Ionicons name="chevron-back" size={24} color="#FF9500" />
           </TouchableOpacity>
-
-          <TouchableOpacity 
-            onPress={handleImagePick}
-            style={[styles.button, styles.secondaryButton]}
-            disabled={showSideView}
-          >
-            <Ionicons name="images" size={20} color="white" style={styles.buttonIcon} />
-            <Text style={styles.buttonText}>Gallery</Text>
-          </TouchableOpacity>
+          <Text style={styles.resultHeaderText}>Calorie Estimation</Text>
         </View>
-      </View>
-
-      <TouchableOpacity 
-        style={styles.sideViewToggle}
-        onPress={() => setShowSideView(!showSideView)}
-      >
-        <Ionicons 
-          name={showSideView ? "chevron-up" : "chevron-down"} 
-          size={20} 
-          color="#007BFF" 
-        />
-        <Text style={styles.sideViewToggleText}>
-          {showSideView ? "Hide Side View" : "Add Side View (Optional)"}
-        </Text>
-      </TouchableOpacity>
-
-      {showSideView && (
-        <View style={styles.sideImageSection}>
-          <Text style={styles.sectionTitle}>Side View Image (Optional)</Text>
-          {sideImage ? (
-            <View style={styles.imageContainer}>
-              <Image source={{ uri: sideImage }} style={styles.image} />
-              <TouchableOpacity 
-                style={styles.clearButton}
-                onPress={() => setSideImage(null)}
-              >
-                <Ionicons name="close-circle" size={30} color="#FF3B30" />
-              </TouchableOpacity>
+        
+        <ScrollView style={styles.resultContainer}>
+          <Image source={{ uri: topImage! }} style={styles.resultImage} />
+          
+          <Text style={styles.foodName}>{food.name}</Text>
+          <Text style={styles.foodDescription}>
+            Make better food choices with our calorie counter app. We designed our app in a way 
+            that will help you to know the nutrition of each ingredient, also as meals.
+          </Text>
+          
+          <View style={styles.nutritionContainer}>
+            <View style={styles.nutritionItem}>
+              <Text style={styles.nutritionValue}>{food.carbs.toFixed(2)}g</Text>
+              <Text style={styles.nutritionLabel}>Carbs</Text>
             </View>
-          ) : renderPlaceholder('side')}
+            <View style={styles.nutritionItem}>
+              <Text style={styles.nutritionValue}>{food.protein.toFixed(2)}g</Text>
+              <Text style={styles.nutritionLabel}>Protein</Text>
+            </View>
+            <View style={styles.nutritionItem}>
+              <Text style={styles.nutritionValue}>{food.fats.toFixed(2)}g</Text>
+              <Text style={styles.nutritionLabel}>Fat</Text>
+            </View>
+          </View>
+          
+          <View style={styles.calorieContainer}>
+            <Text style={styles.calorieValue}>{food.calories.toFixed(2)} kcal</Text>
+          </View>
+        </ScrollView>
+        
+        <View style={styles.navBar}>
+          <TouchableOpacity style={styles.navButton}>
+            <Ionicons name="home-outline" size={24} color="#777" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.navButton}>
+            <Ionicons name="barbell-outline" size={24} color="#777" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.addButton}>
+            <Ionicons name="add" size={24} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.navButton}>
+            <Ionicons name="stats-chart-outline" size={24} color="#777" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.navButton}>
+            <Ionicons name="person-outline" size={24} color="#777" />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
-          <View style={styles.buttonsContainer}>
-            <TouchableOpacity 
-              onPress={handleCameraOpen}
-              style={styles.button}
-            >
-              <Ionicons name="camera" size={20} color="white" style={styles.buttonIcon} />
-              <Text style={styles.buttonText}>Camera</Text>
+  return (
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>Please capture the top view of the food</Text>
+          {renderImage(topImage, 'top')}
+        </View>
+        
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>Please capture the side view of the food</Text>
+          {renderImage(sideImage, 'side')}
+        </View>
+
+        <TouchableOpacity 
+          style={[styles.measureButton, !topImage && styles.disabledButton]}
+          onPress={measureCalories}
+          disabled={isUploading || !topImage}
+        >
+          {isUploading ? (
+            <ActivityIndicator color="#ffffff" size="small" />
+          ) : (
+            <Text style={styles.measureButtonText}>Measure Calorie</Text>
+          )}
+        </TouchableOpacity>
+      </ScrollView>
+
+      <Modal
+        visible={showModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              Choose {currentSelection === 'top' ? 'Top' : 'Side'} View Image
+            </Text>
+            
+            <TouchableOpacity style={styles.modalOption} onPress={handleCamera}>
+              <Ionicons name="camera-outline" size={24} color="#FF9500" />
+              <Text style={styles.modalOptionText}>Camera</Text>
             </TouchableOpacity>
-
+            
+            <TouchableOpacity style={styles.modalOption} onPress={handleGallery}>
+              <Ionicons name="images-outline" size={24} color="#FF9500" />
+              <Text style={styles.modalOptionText}>Gallery</Text>
+            </TouchableOpacity>
+            
             <TouchableOpacity 
-              onPress={handleImagePick}
-              style={[styles.button, styles.secondaryButton]}
+              style={[styles.modalOption, styles.cancelOption]} 
+              onPress={() => setShowModal(false)}
             >
-              <Ionicons name="images" size={20} color="white" style={styles.buttonIcon} />
-              <Text style={styles.buttonText}>Gallery</Text>
+              <Ionicons name="close" size={24} color="#FF9500" />
+              <Text style={styles.modalOptionText}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
-      )}
+      </Modal>
 
-      <View style={styles.infoContainer}>
-        <Ionicons name="information-circle" size={20} color="#6c757d" />
-        <Text style={styles.infoText}>
-          {sideImage ? 
-            "Both images have coin for size reference." : 
-            "Make sure your image contains a coin for size reference."}
-        </Text>
+      <View style={styles.navBar}>
+        <TouchableOpacity style={styles.navButton}>
+          <Ionicons name="home-outline" size={24} color="#777" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navButton}>
+          <Ionicons name="barbell-outline" size={24} color="#777" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.addButton}>
+          <Ionicons name="add" size={24} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navButton}>
+          <Ionicons name="stats-chart-outline" size={24} color="#777" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.navButton}>
+          <Ionicons name="person-outline" size={24} color="#777" />
+        </TouchableOpacity>
       </View>
-
-      <TouchableOpacity 
-        style={[
-          styles.uploadButton,
-          (!topImage) && styles.disabledButton
-        ]}
-        onPress={uploadImages}
-        disabled={isUploading || !topImage}
-      >
-        {isUploading ? (
-          <ActivityIndicator color="#ffffff" size="small" />
-        ) : (
-          <>
-            <Ionicons name="nutrition" size={20} color="white" style={styles.buttonIcon} />
-            <Text style={styles.buttonText}>Analyze Food</Text>
-          </>
-        )}
-      </TouchableOpacity>
-
-      {response && response.error && (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{response.error}</Text>
-        </View>
-      )}
-
-      {renderFoodResults()}
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F0F6FF',
+  },
+  scrollContent: {
     padding: 16,
-    backgroundColor: '#f5f5f5',
+    paddingBottom: 70,
   },
-  mainImageSection: {
-    marginBottom: 16,
-  },
-  sideImageSection: {
-    marginBottom: 16,
+  sectionContainer: {
+    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
+    color: '#888',
     marginBottom: 8,
-    color: '#333',
   },
-  sideViewToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#e9f5ff',
+  imagePlaceholder: {
+    backgroundColor: '#fff',
+    height: 140,
     borderRadius: 8,
-    marginBottom: 16,
-  },
-  sideViewToggleText: {
-    marginLeft: 8,
-    color: '#007BFF',
-    fontWeight: '500',
-  },
-  buttonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    marginTop: 8,
-  },
-  button: {
-    backgroundColor: '#007BFF', 
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    flex: 1,
-    marginHorizontal: 5,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    borderWidth: 0,
   },
-  secondaryButton: {
-    backgroundColor: '#28a745',
+  placeholderText: {
+    color: '#aaa',
+    marginTop: 8,
+    fontSize: 14,
   },
-  buttonIcon: {
-    marginRight: 6,
+  imageContainer: {
+    position: 'relative',
+    height: 140,
+    borderRadius: 8,
+    overflow: 'hidden',
   },
-  buttonText: {
+  image: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
+  },
+  clearButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 12,
+  },
+  measureButton: {
+    backgroundColor: '#FF9500',
+    paddingVertical: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  disabledButton: {
+    backgroundColor: '#FFB74D',
+    opacity: 0.7,
+  },
+  measureButtonText: {
     color: 'white',
     fontWeight: 'bold',
     fontSize: 16,
   },
-  imageContainer: {
-    alignItems: 'center',
-    position: 'relative',
-    marginTop: 10,
-    marginBottom: 10,
-  },
-  image: {
-    width: '100%',
-    height: 300,
-    borderRadius: 12,
-  },
-  clearButton: {
+  navBar: {
+    flexDirection: 'row',
     position: 'absolute',
-    top: -10,
-    right: -10,
-    backgroundColor: 'white',
-    borderRadius: 20,
-  },
-  placeholderContainer: {
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    height: 60,
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f0f0f0',
-    height: 300,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#e0e0e0',
-    borderStyle: 'dashed',
-    marginBottom: 10,
-  },
-  placeholderText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#888',
-  },
-  infoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  infoText: {
-    marginLeft: 8,
-    color: '#6c757d',
-    fontSize: 14,
-  },
-  uploadButton: {
-    backgroundColor: '#1E88E5',
-    paddingVertical: 14,
-    paddingHorizontal: 25,
-    borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 16,
-  },
-  disabledButton: {
-    backgroundColor: '#ccc',
-  },
-  errorContainer: {
-    backgroundColor: '#f8d7da',
-    padding: 16,
-    borderRadius: 8,
-    marginVertical: 16,
-    borderWidth: 1,
-    borderColor: '#f5c6cb',
-  },
-  errorText: {
-    color: '#721c24',
-    fontSize: 16,
-  },
-  foodResultsContainer: {
-    marginTop: 20,
-    marginBottom: 40,
-  },
-  foodResultsTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    color: '#333',
-  },
-  foodItemCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    justifyContent: 'space-around',
+    borderTopRightRadius: 20,
+    borderTopLeftRadius: 20,
+    elevation: 8,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
   },
-  foodName: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    color: '#333',
+  navButton: {
+    padding: 8,
   },
-  nutritionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+  addButton: {
+    backgroundColor: '#6A42F4',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
   },
-  nutritionItem: {
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  nutritionValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#007BFF',
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    width: '80%',
+    padding: 0,
+    overflow: 'hidden',
   },
-  nutritionLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-  },
-  macrosRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  macroItem: {
-    alignItems: 'center',
-  },
-  macroValue: {
+  modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
+    textAlign: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
-  macroLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 2,
-  },
-  dimensionsRow: {
+  modalOption: {
+    flexDirection: 'row',
     alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
-  dimensionsText: {
+  modalOptionText: {
+    fontSize: 16,
+    marginLeft: 16,
+    color: '#FF9500',
+  },
+  cancelOption: {
+    borderBottomWidth: 0,
+  },
+  resultContainer: {
+    flex: 1,
+    padding: 16,
+  },
+  resultHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#F0F6FF',
+  },
+  backButton: {
+    padding: 4,
+  },
+  resultHeaderText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FF9500',
+    marginLeft: 8,
+  },
+  resultImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  foodName: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  foodDescription: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 4,
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  nutritionContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 32,
+  },
+  nutritionItem: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+    flex: 1,
+    marginHorizontal: 4,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  nutritionValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  nutritionLabel: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 4,
+  },
+  calorieContainer: {
+    backgroundColor: '#6A42F4',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  calorieValue: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: 'white',
   },
 });
