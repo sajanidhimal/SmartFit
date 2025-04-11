@@ -1,5 +1,7 @@
+
+import { router } from 'expo-router';
 import React from 'react';
-import { View, Text, SafeAreaView } from 'react-native';
+import { View, Text, SafeAreaView, TouchableOpacity } from 'react-native';
 
 export default function ActivityScreen() {
   return (
@@ -9,7 +11,27 @@ export default function ActivityScreen() {
         <Text className="text-gray-600 mt-2 text-center">
           This is where you'll track your workouts and daily activities.
         </Text>
+        <TouchableOpacity 
+          onPress={() => router.push('/(bmi)')}
+          className="mt-4 bg-blue-500 px-6 py-3 rounded-full"
+        >
+          <Text className="text-white font-semibold">Calculate BMI</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          onPress={() => router.push('/(steps)')}
+          className="mt-4 bg-blue-500 px-6 py-3 rounded-full"
+        >
+          <Text className="text-white font-semibold">Track Steps</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          onPress={() => router.push('/(weight)')}
+          className="mt-4 bg-blue-500 px-6 py-3 rounded-full"
+        >
+          <Text className="text-white font-semibold">Track weight</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
+
+
