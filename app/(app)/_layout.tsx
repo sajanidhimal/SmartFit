@@ -94,7 +94,7 @@ export default function AppLayout() {
           name="activity/index"
           options={{
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="fitness-outline" color={color} size={size} />
+              <Ionicons name="walk" color={color} size={size} />
             ),
           }}
         />
