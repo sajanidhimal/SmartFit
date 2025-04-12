@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>703344364199-ne81lirvlag7hailhvn0in45plo08ot4.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.703344364199-ne81lirvlag7hailhvn0in45plo08ot4</string>
+	<key>API_KEY</key>
+	<string>AIzaSyBS55Y5Z4oa6B0QlmZB5qOnC3c13Cxf5i0</string>
+	<key>GCM_SENDER_ID</key>
+	<string>703344364199</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.smartfit.app</string>
+	<key>PROJECT_ID</key>
+	<string>smartfit-4b0b4</string>
+	<key>STORAGE_BUCKET</key>
+	<string>smartfit-4b0b4.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:703344364199:ios:dfba67fd51bb6403cf2982</string>
+</dict>
+</plist>

@@ -76,7 +76,7 @@ export default function FitnessScreen() {
                 className="absolute w-full h-full"
               />
               <View className="w-full h-full bg-black/30 items-center justify-center">
-                <Ionicons name={item.icon} size={28} color="white" />
+                <Ionicons name={item.icon as any} size={28} color="white" />
                 <Text className="text-white font-medium mt-2">{item.title}</Text>
               </View>
               </TouchableOpacity>

@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "703344364199",
+    "project_id": "smartfit-4b0b4",
+    "storage_bucket": "smartfit-4b0b4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:703344364199:android:659c15a62c2a85b3cf2982",
+        "android_client_info": {
+          "package_name": "com.smartfit.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "703344364199-0g75thudg7ar1ot24oc0ou9beojecttg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.smartfit.app",
+            "certificate_hash": "bbd682d7cdb99eddd6fee28e71caf99e08a4e6b4"
+          }
+        },
+        {
+          "client_id": "703344364199-consapujaj1o21l8neu88pc9fjbqagii.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC4jtOOaXVedjoFCWaJgTSAUlPpTScIKQg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "703344364199-consapujaj1o21l8neu88pc9fjbqagii.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "703344364199-ne81lirvlag7hailhvn0in45plo08ot4.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.smartfit.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

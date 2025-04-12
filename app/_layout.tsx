@@ -1,3 +1,4 @@
+//  app/_layout.tsx
 import { Stack } from 'expo-router';
 import { useEffect } from 'react';
 import { useFonts } from 'expo-font';
@@ -29,7 +30,9 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
+    <Stack screenOptions={{ headerShown: false }}>
+      {/* Remove initialRouteName from here - it's causing problems */}
+      <Stack.Screen name="index" />
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(app)" options={{ headerShown: false }} />
     </Stack>
