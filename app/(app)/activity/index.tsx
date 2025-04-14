@@ -3,8 +3,8 @@
 // It uses the Accelerometer to detect steps and tracks daily and weekly progress
 // It also uses AsyncStorage to save and load step data
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform, EmitterSubscription } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Platform, RefreshControl, EmitterSubscription, ScrollView } from 'react-native';
 import { Accelerometer } from 'expo-sensors';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
@@ -24,8 +24,9 @@ export default function StepTrackerApp() {
   const [isTracking, setIsTracking] = useState(false);
   const [accelerometerData, setAccelerometerData] = useState({ x: 0, y: 0, z: 0 });
   const [lastMagnitude, setLastMagnitude] = useState(0);
-  const [subscription, setSubscription] = useState<EmitterSubscription | null>(null);
+  const [subscription, setSubscription] = useState<any>(null);
   const [stepDetected, setStepDetected] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Step detection thresholds
   const STEP_THRESHOLD = 1.2; // Minimum acceleration to count as a step
@@ -129,14 +130,14 @@ export default function StepTrackerApp() {
       setIsTracking(true);
       
       Accelerometer.setUpdateInterval(100);
-      const subscription = Accelerometer.addListener(data => {
+      const newSubscription = Accelerometer.addListener(data => {
         setAccelerometerData(data);
         detectStep(data);
       });
-      setSubscription(subscription);
+      setSubscription(newSubscription);
       
       Alert.alert("Step Tracking", "Started tracking your steps!");
-    } catch (error) {
+    } catch (error: any) {
       Alert.alert("Error", "Failed to start step tracking: " + error.message);
     }
   };
@@ -172,8 +173,8 @@ export default function StepTrackerApp() {
     }
   };
 
-  // Step detection algorithm
-  const detectStep = (data) => {
+  // Detect step from accelerometer data
+  const detectStep = (data: { x: number; y: number; z: number }) => {
     // Calculate the magnitude of acceleration
     const magnitude = Math.sqrt(data.x * data.x + data.y * data.y + data.z * data.z);
     
@@ -210,90 +211,100 @@ export default function StepTrackerApp() {
   // Render day of week labels
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      // Reload step and activity data
+      await loadSavedData();
+    } catch (error: any) {
+      console.error('Error refreshing activity data:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#FF9500" />
-        </TouchableOpacity>
+       
         <Text style={styles.headerTitle}>Track Your Steps</Text>
       </View>
 
-      <View style={styles.circleContainer}>
-        <Svg height={radius * 2 + strokeWidth} width={radius * 2 + strokeWidth} viewBox={`-${radius + strokeWidth/2} -${radius + strokeWidth/2} ${radius * 2 + strokeWidth} ${radius * 2 + strokeWidth}`}>
-          {/* Background circle */}
-          <Circle
-            cx="0"
-            cy="0"
-            r={radius}
-            stroke="#EAEAEA"
-            strokeWidth={strokeWidth}
-            fill="transparent"
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.contentContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#FF9500"]}
+            tintColor="#FF9500"
           />
-          {/* Progress arc */}
-          <Path
-            d={getProgressPath()}
-            stroke="#FF9500"
-            strokeWidth={strokeWidth}
-            fill="transparent"
-            strokeLinecap="round"
-          />
-        </Svg>
-        <View style={styles.stepsTextContainer}>
-          <Text style={styles.stepsLabel}>Steps</Text>
-          <Text style={styles.stepsValue}>{steps}</Text>
-          <Text style={styles.stepsGoal}>/{goal}</Text>
+        }
+      >
+        <View style={styles.circleContainer}>
+          <Svg height={radius * 2 + strokeWidth} width={radius * 2 + strokeWidth} viewBox={`-${radius + strokeWidth/2} -${radius + strokeWidth/2} ${radius * 2 + strokeWidth} ${radius * 2 + strokeWidth}`}>
+            {/* Background circle */}
+            <Circle
+              cx="0"
+              cy="0"
+              r={radius}
+              stroke="#EAEAEA"
+              strokeWidth={strokeWidth}
+              fill="transparent"
+            />
+            {/* Progress arc */}
+            <Path
+              d={getProgressPath()}
+              stroke="#FF9500"
+              strokeWidth={strokeWidth}
+              fill="transparent"
+              strokeLinecap="round"
+            />
+          </Svg>
+          <View style={styles.stepsTextContainer}>
+            <Text style={styles.stepsLabel}>Steps</Text>
+            <Text style={styles.stepsValue}>{steps}</Text>
+            <Text style={styles.stepsGoal}>/{goal}</Text>
+          </View>
         </View>
-      </View>
 
-      <View style={styles.statsContainer}>
-        <View style={styles.statItem}>
-          <Ionicons name="flame" size={24} color="#FF9500" />
-          <Text style={styles.statValue}>{calories}</Text>
-          <Text style={styles.statUnit}>kcal</Text>
+        <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Ionicons name="flame" size={24} color="#FF9500" />
+            <Text style={styles.statValue}>{calories}</Text>
+            <Text style={styles.statUnit}>kcal</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Ionicons name="location" size={24} color="#6200EE" />
+            <Text style={styles.statValue}>{distance.toFixed(2)}</Text>
+            <Text style={styles.statUnit}>km</Text>
+          </View>
         </View>
-        <View style={styles.statItem}>
-          <Ionicons name="location" size={24} color="#6200EE" />
-          <Text style={styles.statValue}>{distance.toFixed(2)}</Text>
-          <Text style={styles.statUnit}>km</Text>
-        </View>
-      </View>
 
-      {/* Start Tracking Button */}
-      <TouchableOpacity style={styles.trackingButton} onPress={toggleTracking}>
-        <Text style={styles.trackingButtonText}>
-          {isTracking ? "Stop Tracking" : "Start Tracking"}
-        </Text>
-      </TouchableOpacity>
+        {/* Start Tracking Button */}
+        <TouchableOpacity style={styles.trackingButton} onPress={toggleTracking}>
+          <Text style={styles.trackingButtonText}>
+            {isTracking ? "Stop Tracking" : "Start Tracking"}
+          </Text>
+        </TouchableOpacity>
 
-      <View style={styles.progressContainer}>
-        <Text style={styles.progressTitle}>Your Progress</Text>
-        <View style={styles.weekProgress}>
-          {weekProgress.map((day, index) => (
-            <View key={index} style={styles.dayProgress}>
-              <View style={styles.progressBarContainer}>
-                <View style={[styles.progressBar, { height: `${day * 100}%`, backgroundColor: index === (new Date().getDay() === 0 ? 6 : new Date().getDay() - 1) ? '#FFCB66' : '#FF9500' }]} />
+        <View style={styles.progressContainer}>
+          <Text style={styles.progressTitle}>Your Progress</Text>
+          <View style={styles.weekProgress}>
+            {weekProgress.map((day, index) => (
+              <View key={index} style={styles.dayProgress}>
+                <View style={styles.progressBarContainer}>
+                  <View style={[styles.progressBar, { height: `${day * 100}%`, backgroundColor: index === (new Date().getDay() === 0 ? 6 : new Date().getDay() - 1) ? '#FFCB66' : '#FF9500' }]} />
+                </View>
+                <Text style={styles.dayLabel}>{days[index]}</Text>
               </View>
-              <Text style={styles.dayLabel}>{days[index]}</Text>
-            </View>
-          ))}
+            ))}
+          </View>
         </View>
-      </View>
 
-      <View style={styles.tabBar}>
-        <TouchableOpacity style={styles.tabItem}>
-          <Ionicons name="home-outline" size={24} color="#888" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem}>
-          <Ionicons name="barbell-outline" size={24} color="#888" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem}>
-          <Ionicons name="stats-chart-outline" size={24} color="#888" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem}>
-          <Ionicons name="person-outline" size={24} color="#6200EE" />
-        </TouchableOpacity>
-      </View>
+
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -451,6 +462,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 20,
   },
 });
 

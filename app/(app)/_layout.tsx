@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View } from 'react-native';
+import { View, RefreshControl } from 'react-native';
 import { Tabs } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,7 +7,16 @@ import { doc, getDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import  {auth, db} from '../firebase';
 
+
 export default function AppLayout() {
+
+  const [refreshing, setRefreshing] = React.useState(false);
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 2000);
+  }, []);
   useEffect(() => {
    
       const fetchUserProfile = async () => {
@@ -70,6 +79,7 @@ export default function AppLayout() {
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="barbell-outline" color={color} size={size} />
             ),
+            
           }}
         />
         <Tabs.Screen
@@ -98,6 +108,25 @@ export default function AppLayout() {
             ),
           }}
         />
+          {/* Hidden nested routes - ADD href: null to these */}
+  <Tabs.Screen 
+    name="fitness/category/[id]" 
+    options={{
+      href: null, // This prevents it from showing in the tab bar
+    }}
+  />
+  <Tabs.Screen 
+    name="fitness/workout/[id]" 
+    options={{
+      href: null, // This prevents it from showing in the tab bar
+    }}
+  />
+  <Tabs.Screen 
+    name="add/camera/index" 
+    options={{
+      href: null, // This prevents it from showing in the tab bar
+    }}
+  />
       </Tabs>
     </>
   );

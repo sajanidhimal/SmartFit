@@ -1,6 +1,6 @@
 //home.tsx
-import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, SafeAreaView, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, ScrollView, SafeAreaView, TouchableOpacity, Alert, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import CircularProgress from '../../components/CircularProgress';
@@ -8,6 +8,9 @@ import MacroCard from '../../components/MacroCard';
 import WeekCalendar from '../../components/WeekCalendar';
 import NutritionTracker from '../../components/NutritionDetail';
 import { useFocusEffect } from 'expo-router';
+import { signOut } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 // Import your Firebase functions
 import { 
@@ -27,6 +30,10 @@ import {
 import { collection, getDocs, Timestamp } from 'firebase/firestore';
 import { seedDefaultExerciseDatabase, seedDefaultFoodDatabase } from '../utils/database_service/seed_data';
 import { auth, db } from '../firebase';
+
+// Constants
+const WATER_STORAGE_KEY = 'daily_water_intake';
+const MIN_RECOMMENDED_WATER = 4; // Minimum recommended water intake in liters
 
 // Extend the base UserProfile to include the fields used in our app
 interface UserProfile extends BaseUserProfile {
@@ -65,6 +72,7 @@ export default function HomeScreen() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   
   // State for daily stats
   const [dailyStats, setDailyStats] = useState<DailyStats>({
@@ -91,102 +99,230 @@ export default function HomeScreen() {
   const [weekDays, setWeekDays] = useState<Array<{day: string, date: number, active: boolean, fullDate: Date}>>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
-  // Load user data and initialize the app
-  useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        // In a real app, you would get this from auth
-        const currentUserId = auth.currentUser?.uid; 
-        if (!currentUserId) {
-          console.error('User not logged in');
-          return;
-        }
-        setUserId(currentUserId);
-        console.log('Current User ID:', currentUserId);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      // Reload data
+      await loadUserData();
+      await loadDailyData(selectedDate);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [selectedDate]);
 
-        // Get user profile
-        const profileResult = await getUserProfile(currentUserId);
-        if (profileResult.success) {
-          const profileData = profileResult.data as UserProfile;
-          setUserProfile(profileData);
+  // Load user data and initialize the app
+  const loadUserData = async () => {
+    try {
+      // In a real app, you would get this from auth
+      const currentUserId = auth.currentUser?.uid; 
+      if (!currentUserId) {
+        console.error('User not logged in');
+        return;
+      }
+      setUserId(currentUserId);
+      console.log('Current User ID:', currentUserId);
+
+      // Get user profile
+      const profileResult = await getUserProfile(currentUserId);
+      if (profileResult.success) {
+        const profileData = profileResult.data as UserProfile;
+        setUserProfile(profileData);
+        
+        // Use profile data, including directly using dailyCalorieGoal if available
+        if (profileData?.dailyCalorieGoal) {
+          const calorieGoal = Number(profileData.dailyCalorieGoal);
           
-          // Use profile data, including directly using dailyCalorieGoal if available
-          if (profileData?.dailyCalorieGoal) {
-            const calorieGoal = Number(profileData.dailyCalorieGoal);
-            
-            setDailyStats(prev => ({
-              ...prev,
-              calories: {
-                ...prev.calories,
-                total: calorieGoal,
-                remaining: calorieGoal
-              },
-              macros: {
-                protein: { current: 0, goal: Math.round(calorieGoal * 0.3 / 4), unit: 'g' }, // 30% of calories from protein
-                fats: { current: 0, goal: Math.round(calorieGoal * 0.25 / 9), unit: 'g' },   // 25% of calories from fat
-                carbs: { current: 0, goal: Math.round(calorieGoal * 0.45 / 4), unit: 'g' }  // 45% of calories from carbs
-              }
-            }));
-          } else {
-            // Fallback to calculating BMR and TDEE
-            const gender = profileData?.gender || '';
-            const weight = Number(profileData?.weight) || 70;
-            const height = Number(profileData?.height) || 170;
-            // Handle different age representations based on how it was stored
-            let age = 30; // Default
-            if (profileData?.age) {
-              age = typeof profileData.age === 'number' ? profileData.age : 
-                    profileData.age ? Number(profileData.age) : 30;
+          setDailyStats(prev => ({
+            ...prev,
+            calories: {
+              ...prev.calories,
+              total: calorieGoal,
+              remaining: calorieGoal
+            },
+            macros: {
+              protein: { current: 0, goal: Math.round(calorieGoal * 0.3 / 4), unit: 'g' }, // 30% of calories from protein
+              fats: { current: 0, goal: Math.round(calorieGoal * 0.25 / 9), unit: 'g' },   // 25% of calories from fat
+              carbs: { current: 0, goal: Math.round(calorieGoal * 0.45 / 4), unit: 'g' }  // 45% of calories from carbs
             }
-            
-            const bmr = calculateBMR(
-              gender,
-              weight,
-              height,
-              age
+          }));
+        } else {
+          // Fallback to calculating BMR and TDEE
+          const gender = profileData?.gender || '';
+          const weight = Number(profileData?.weight) || 70;
+          const height = Number(profileData?.height) || 170;
+          // Handle different age representations based on how it was stored
+          let age = 30; // Default
+          if (profileData?.age) {
+            age = typeof profileData.age === 'number' ? profileData.age : 
+                  profileData.age ? Number(profileData.age) : 30;
+          }
+          
+          const bmr = calculateBMR(
+            gender,
+            weight,
+            height,
+            age
+          );
+          
+          // Handle activity level with case-insensitive comparison
+          let activityLevel = 'moderate';
+          if (profileData?.activityLevel) {
+            activityLevel = profileData.activityLevel.toLowerCase();
+          }
+          
+          const tdee = calculateTDEE(bmr, activityLevel);
+          
+          setDailyStats(prev => ({
+            ...prev,
+            calories: {
+              ...prev.calories,
+              total: tdee,
+              remaining: tdee
+            },
+            macros: {
+              protein: { current: 0, goal: Math.round(tdee * 0.3 / 4), unit: 'g' },
+              fats: { current: 0, goal: Math.round(tdee * 0.25 / 9), unit: 'g' },
+              carbs: { current: 0, goal: Math.round(tdee * 0.45 / 4), unit: 'g' }
+            }
+          }));
+        }
+      }
+      
+      // Initialize week days
+      initializeWeekDays();
+    } catch (error) {
+      console.error("Error loading initial data:", error);
+    } finally {
+      setIsLoading(false);
+      setDataLoaded(true);  // Mark initial data as loaded
+    }
+  };
+
+  // Load water intake from AsyncStorage on component mount
+  useEffect(() => {
+    loadWaterIntake();
+  }, []);
+
+  // Check water intake when the component mounts and when water stats change
+  useEffect(() => {
+    const checkWaterIntake = async () => {
+      // Only check if the app has finished loading and we're in a stable state
+      if (!isLoading && dataLoaded) {
+        // Get today's date string in YYYY-MM-DD format
+        const today = new Date().toISOString().split('T')[0];
+        
+        // Get the current time to only show alert during the later part of the day
+        const currentHour = new Date().getHours();
+        
+        // Check if water intake is less than recommended and it's after 4 PM
+        if (dailyStats.water.current < MIN_RECOMMENDED_WATER && currentHour >= 16) {
+          // Check if we've already shown the alert today
+          const alreadyAlerted = await AsyncStorage.getItem(`water_alert_${today}`);
+          
+          if (!alreadyAlerted) {
+            Alert.alert(
+              "Hydration Reminder",
+              `You've only had ${dailyStats.water.current} ${dailyStats.water.unit} of water today. Consider drinking more to reach your goal of ${dailyStats.water.goal} ${dailyStats.water.unit}.`,
+              [
+                { text: "Dismiss", style: "cancel" },
+                { 
+                  text: "Add Water", 
+                  onPress: addWater 
+                }
+              ]
             );
             
-            // Handle activity level with case-insensitive comparison
-            let activityLevel = 'moderate';
-            if (profileData?.activityLevel) {
-              activityLevel = profileData.activityLevel.toLowerCase();
-            }
-            
-            const tdee = calculateTDEE(bmr, activityLevel);
-            
-            setDailyStats(prev => ({
-              ...prev,
-              calories: {
-                ...prev.calories,
-                total: tdee,
-                remaining: tdee
-              },
-              macros: {
-                protein: { current: 0, goal: Math.round(tdee * 0.3 / 4), unit: 'g' },
-                fats: { current: 0, goal: Math.round(tdee * 0.25 / 9), unit: 'g' },
-                carbs: { current: 0, goal: Math.round(tdee * 0.45 / 4), unit: 'g' }
-              }
-            }));
+            // Save that we've shown the alert today
+            await AsyncStorage.setItem(`water_alert_${today}`, 'true');
           }
         }
-        
-        // Initialize week days
-        initializeWeekDays();
-        
-        // Load data for the current day
-        await loadDailyData(new Date());
-        
-      } catch (error) {
-        console.error("Error loading initial data:", error);
-      } finally {
-        setIsLoading(false);
-        setDataLoaded(true);  // Mark initial data as loaded
       }
     };
     
-    loadUserData();
+    checkWaterIntake();
+  }, [isLoading, dataLoaded, dailyStats.water.current]);
+
+  // Load saved water intake from AsyncStorage
+  const loadWaterIntake = async () => {
+    try {
+      // Get today's date string in YYYY-MM-DD format
+      const today = new Date().toISOString().split('T')[0];
+      const savedWater = await AsyncStorage.getItem(`${WATER_STORAGE_KEY}_${today}`);
+      
+      if (savedWater !== null) {
+        const waterAmount = parseFloat(savedWater);
+        
+        // Update the water intake in the daily stats
+        setDailyStats(prev => ({
+          ...prev,
+          water: {
+            ...prev.water,
+            current: waterAmount
+          }
+        }));
+      }
+    } catch (error) {
+      console.error('Error loading water intake:', error);
+    }
+  };
+
+  // Handle water tracking by updating local storage
+  const addWater = () => {
+    // Get today's date string in YYYY-MM-DD format
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Update state with new water amount
+    setDailyStats(prev => {
+      const newWaterAmount = Math.min(prev.water.current + 1, prev.water.goal);
+      
+      // Save to AsyncStorage
+      AsyncStorage.setItem(`${WATER_STORAGE_KEY}_${today}`, newWaterAmount.toString())
+        .catch(error => console.error('Error saving water intake:', error));
+      
+      return {
+        ...prev,
+        water: {
+          ...prev.water,
+          current: newWaterAmount
+        }
+      };
+    });
+  };
+
+  // First load of data
+  useEffect(() => {
+    loadUserData().then(() => {
+      loadDailyData(new Date());
+    });
   }, []);
 
+  // Handle logout
+  const handleLogout = async () => {
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to logout?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Logout",
+          onPress: async () => {
+            try {
+              await signOut(auth);
+              router.replace('/(auth)/login');
+            } catch (error) {
+              console.error('Error signing out:', error);
+              Alert.alert('Logout Error', 'An error occurred while logging out.');
+            }
+          }
+        }
+      ]
+    );
+  };
   // Calculate Basal Metabolic Rate
   const calculateBMR = (gender: string, weight: number, height: number, age: number): number => {
     if (gender.toLowerCase() === 'male') {
@@ -378,20 +514,6 @@ export default function HomeScreen() {
     loadDailyData(weekDays[index].fullDate);
   };
 
-  // Handle water tracking
-  const addWater = () => {
-    setDailyStats(prev => ({
-      ...prev,
-      water: {
-        ...prev.water,
-        current: Math.min(prev.water.current + 1, prev.water.goal)
-      }
-    }));
-    
-    // In a real app, you would save this to Firebase
-    // saveWaterIntake(userId, selectedDate, dailyStats.water.current + 1);
-  };
-
   // Navigate to previous week
   const handlePrevWeek = () => {
     const firstDayOfCurrentWeek = weekDays[0].fullDate;
@@ -456,7 +578,17 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-100 w-full">
-      <ScrollView className="flex-1 px-4 mb-16 w-full">
+      <ScrollView 
+        className="flex-1 px-4 mb-16 w-full"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#f97316"]}
+            tintColor="#f97316"
+          />
+        }
+      >
         {/* Header */}
         <View className="flex-row justify-between items-center py-6 w-full">
           <View>
@@ -467,12 +599,20 @@ export default function HomeScreen() {
                userProfile?.gender === 'Female' || userProfile?.gender?.toLowerCase() === 'female' ? 'Ma\'am' : 'User')}!
             </Text>
           </View>
+          <View className="flex-row">
+          <TouchableOpacity 
+              onPress={handleLogout}
+              className="w-10 h-10 bg-red-500 rounded-full items-center justify-center mr-2"
+            >
+              <Ionicons name="log-out-outline" size={24} color="white" />
+            </TouchableOpacity>
           <TouchableOpacity 
             // onPress={() => router.push('/profile')}
             className="w-10 h-10 bg-gray-300 rounded-full items-center justify-center"
           >
             <Ionicons name="person" size={24} color="#777" />
           </TouchableOpacity>
+                </View>
         </View>
 
         {/* Main Card */}
@@ -591,8 +731,8 @@ export default function HomeScreen() {
           
           <TouchableOpacity 
             className="w-12 h-12 bg-blue-500 rounded-lg items-center justify-center"
-             onPress={addWater}
-            
+            // onPress={addWater}
+             onPress={()=> seedDefaultFoodDatabase()}
           >
             <Ionicons name="add" size={32} color="white" />
           </TouchableOpacity>

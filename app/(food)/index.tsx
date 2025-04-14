@@ -41,8 +41,9 @@ export default function FoodTrackingScreen() {
 
   useEffect(() => {
     if (user) {
-      loadUserCalorieGoal();
-      loadAllFoodItems();
+      loadUserCalorieGoal().then(() => {
+        loadAllFoodItems();
+      });
     }
   }, [user]);
 
@@ -52,6 +53,13 @@ export default function FoodTrackingScreen() {
       calculateMacroTotals(foodItems);
     }
   }, [activeTab, foodItems]);
+
+  // Add effect to update remaining calories when calorie goal changes
+  useEffect(() => {
+    if (macroTotals.calories !== undefined) {
+      setRemainingCalories(calorieGoal - macroTotals.calories);
+    }
+  }, [calorieGoal, macroTotals.calories]);
 
   const loadUserCalorieGoal = async () => {
     if (!user) return;
@@ -64,8 +72,9 @@ export default function FoodTrackingScreen() {
         const userData = userProfileDoc.data();
         if (userData.dailyCalorieGoal) {
           const goal = Number(userData.dailyCalorieGoal);
+          console.log("goal", goal);  
           setCalorieGoal(goal);
-          setRemainingCalories(goal); // Initially set to full goal, will be updated after loading food
+          setRemainingCalories(goal);
         }
       }
     } catch (error) {
@@ -97,11 +106,14 @@ export default function FoodTrackingScreen() {
         } else {
           console.error('Failed to load food items');
           setFoodItems([]);
+          setMacroTotals({ calories: 0, carbs: 0, protein: 0, fats: 0 });
+          setRemainingCalories(calorieGoal);
         }
       }
     } catch (error) {
       console.error('Error loading food items:', error);
       setFoodItems([]);
+      setRemainingCalories(calorieGoal);
     } finally {
       setLoading(false);
     }
@@ -119,7 +131,8 @@ export default function FoodTrackingScreen() {
     }, { calories: 0, carbs: 0, protein: 0, fats: 0 });
     
     setMacroTotals(totals);
-    setRemainingCalories(calorieGoal - totals.calories);
+    
+    // This will be automatically updated by the useEffect that watches calorieGoal and macroTotals.calories
   };
 
   const getFoodImage = (name: string): string => {
@@ -169,7 +182,7 @@ export default function FoodTrackingScreen() {
         <View className="flex-row items-center mb-6">
           <TouchableOpacity 
             className="w-10 h-10 bg-orange-400 rounded-full items-center justify-center"
-            onPress={() => router.push('/(app)/home')}
+            onPress={() => router.back()}
           >
             <Ionicons name="chevron-back" size={24} color="white" />
           </TouchableOpacity>

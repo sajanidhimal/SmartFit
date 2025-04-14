@@ -140,7 +140,7 @@ export default function AddFoodScreen() {
     setSuccessMessage(message);
     setTimeout(() => {
       setSuccessMessage('');
-      router.push('/(app)/home');
+      
     }, 2000);
   };
 

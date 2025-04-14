@@ -1,9 +1,9 @@
 //fiteness/index.ts
-import React, { useState, useEffect } from 'react';
-import { View, Text, SafeAreaView, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, SafeAreaView, ScrollView, TouchableOpacity, Image, ActivityIndicator, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '@/app/firebase';
-import { getExercises } from '@/app/utils/database_service/exercise_functions';
+import { getExercises, getExerciseCategories, CategoryData } from '@/app/utils/database_service/exercise_functions';
 import { getExerciseByDate } from '@/app/utils/database_service/exercise_tracking_functions';
 import { Timestamp } from 'firebase/firestore';
 import { useRouter } from 'expo-router';
@@ -23,16 +23,6 @@ interface CategoryExercises {
   [key: string]: any[];
 }
 
-// Exercise categories with their icons
-const exerciseCategories = [
-  { icon: 'body-outline', title: 'Full Body', key: 'fullbody' },
-  { icon: 'bicycle-outline', title: 'Cardio', key: 'cardio' },
-  { icon: 'barbell-outline', title: 'Strength', key: 'strength' },
-  { icon: 'walk-outline', title: 'Yoga', key: 'yoga' },
-  { icon: 'fitness-outline', title: 'HIIT', key: 'hiit' },
-  { icon: 'basketball-outline', title: 'Sports', key: 'sports' },
-];
-
 export default function FitnessScreen() {
   const router = useRouter();
   const [userWorkouts, setUserWorkouts] = useState<ExerciseData[]>([]);
@@ -40,10 +30,24 @@ export default function FitnessScreen() {
   const [totalWorkoutMinutes, setTotalWorkoutMinutes] = useState(0);
   const [loading, setLoading] = useState(true);
   const [exercises, setExercises] = useState<CategoryExercises>({});
+  const [categories, setCategories] = useState<CategoryData[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
   
   useEffect(() => {
     fetchUserWorkouts();
-    fetchExercises();
+    fetchCategories();
+  }, []);
+  
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await fetchUserWorkouts();
+      await fetchCategories();
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
+      setRefreshing(false);
+    }
   }, []);
   
   const fetchUserWorkouts = async () => {
@@ -81,14 +85,29 @@ export default function FitnessScreen() {
     setLoading(false);
   };
   
-  const fetchExercises = async () => {
+  const fetchCategories = async () => {
+    try {
+      // Get all available exercise categories from database
+      const result = await getExerciseCategories();
+      if (result.success && result.data) {
+        setCategories(result.data);
+        
+        // Fetch exercises for each category
+        fetchExercisesByCategories(result.data);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  };
+  
+  const fetchExercisesByCategories = async (categoryList: CategoryData[]) => {
     // Fetch exercises for each category
     const exercisesByCategory: CategoryExercises = {};
     
-    for (const category of exerciseCategories) {
-      const result = await getExercises(category.key);
+    for (const category of categoryList) {
+      const result = await getExercises(category.id);
       if (result.success && result.data) {
-        exercisesByCategory[category.key] = result.data;
+        exercisesByCategory[category.id] = result.data;
       }
     }
     
@@ -96,17 +115,11 @@ export default function FitnessScreen() {
   };
   
   const navigateToCategory = (category: string) => {
-    router.push({
-      pathname: "/(category)/[id]",
-      params: { id: category }
-    });
+    router.push(`/fitness/category/${category}`);
   };
   
   const navigateToWorkoutDetail = (workoutId: string) => {
-    router.push({
-      pathname: "/(workout)/[id]",
-      params: { id: workoutId }
-    });
+    router.push(`/fitness/workout/${workoutId}`);
   };
 
   return (
@@ -133,8 +146,18 @@ export default function FitnessScreen() {
         </View>
       </View>
 
-      <ScrollView className="flex-1 p-4">
-        {loading ? (
+      <ScrollView 
+        className="flex-1 p-4"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#f97316"]}
+            tintColor="#f97316"
+          />
+        }
+      >
+        {loading && !refreshing ? (
           <ActivityIndicator size="large" color="#f97316" />
         ) : (
           <>
@@ -169,25 +192,31 @@ export default function FitnessScreen() {
               <Text className="text-4xl font-bold text-gray-800 mb-4">Exercise</Text>
               
               <View className="flex-row flex-wrap justify-between">
-                {exerciseCategories.map((category, index) => (
-                  <TouchableOpacity 
-                    key={index} 
-                    className="w-[48%] h-40 mb-4 rounded-lg overflow-hidden"
-                    onPress={() => navigateToCategory(category.key)}
-                  >
-                    <Image
-                      source={{ uri: `https://picsum.photos/200/300?random=${index+1}` }}
-                      className="absolute w-full h-full"
-                    />
-                    <View className="w-full h-full bg-black/30 items-center justify-center">
-                      <Ionicons name={category.icon as any} size={28} color="white" />
-                      <Text className="text-white font-medium mt-2">{category.title}</Text>
-                      <Text className="text-white text-xs mt-1">
-                        {exercises[category.key] ? `${exercises[category.key].length} exercises` : 'Loading...'}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
+                {categories.length > 0 ? (
+                  categories.map((category, index) => (
+                    <TouchableOpacity 
+                      key={category.id} 
+                      className="w-[48%] h-40 mb-4 rounded-lg overflow-hidden"
+                      onPress={() => navigateToCategory(category.id)}
+                    >
+                      <Image
+                        source={{ uri: `https://picsum.photos/200/300?random=${index+1}` }}
+                        className="absolute w-full h-full"
+                      />
+                      <View className="w-full h-full bg-black/30 items-center justify-center">
+                        <Ionicons name={category.icon as any || 'fitness-outline'} size={28} color="white" />
+                        <Text className="text-white font-medium mt-2">{category.name}</Text>
+                        <Text className="text-white text-xs mt-1">
+                          {exercises[category.id] ? `${exercises[category.id].length} exercises` : 'Loading...'}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <View className="items-center justify-center py-8 w-full">
+                    <Text className="text-gray-500">No exercise categories found</Text>
+                  </View>
+                )}
               </View>
             </View>
           </>

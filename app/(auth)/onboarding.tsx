@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
@@ -41,6 +41,7 @@ export default function OnboardingScreen() {
   const [height, setHeight] = useState<string>('');
   const [weight, setWeight] = useState<string>('');
   const [age, setAge] = useState<string>('');
+  const [name, setName] = useState<string>('');
   const [bmi, setBmi] = useState<number | null>(null);
   const [activityLevel, setActivityLevel] = useState<ActivityLevel | ''>('');
   const [targetWeight, setTargetWeight] = useState<string>('');
@@ -51,8 +52,12 @@ export default function OnboardingScreen() {
 
   
   const handleGenderSelect = (selected: 'Male' | 'Female') => {
-    setGender(selected);
-    nextStep();
+    if (name) {
+      setGender(selected);
+      nextStep();
+    } else {
+      Alert.alert('Please enter your name');
+    }
   };
   
   const calculateBMI = () => {
@@ -77,6 +82,7 @@ export default function OnboardingScreen() {
     if (user && bmi) {
       try {
   await setDoc(doc(db, "userProfiles", user.uid), {
+            name,
             gender,
             height: parseFloat(height),
             weight: parseFloat(weight),
@@ -118,7 +124,16 @@ export default function OnboardingScreen() {
           <View className="flex-1 justify-center items-center p-6">
             <Text className="text-xl font-bold mb-4">How do you identify?</Text>
             <Text className="text-gray-500 mb-8 text-center">This is used in making personalized results and plans for you.</Text>
-            
+            <View className="flex-row border border-gray-300 rounded-lg p-3 mb-4 items-center">
+            <TextInput
+              className="flex-1"
+              placeholder="Name"
+              value={name}
+              onChangeText={setName}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          </View>
             <TouchableOpacity 
               onPress={() => handleGenderSelect('Male')}
               className={`border rounded-lg p-6 w-full mb-4 items-center ${gender === 'Male' ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
