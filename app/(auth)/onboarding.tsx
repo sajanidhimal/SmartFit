@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, TextInput, ScrollView, Alert, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -6,6 +6,7 @@ import { auth, db } from '../firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import TargetWeightScreen from './target_weight';
 import { Ionicons } from '@expo/vector-icons';
+
 
 type HealthConcern = 'Diabetes' | 'Hypertension' | 'Heart Disease' | 'Asthma' | 'Obesity' | 'Anemia' | 'Joint Pain' | 'Anxiety' | 'Back Pain' | 'Muscle Cramps' | 'Postural Issues' | 'Tendonitis' | 'Depression' | 'None';
 
@@ -41,6 +42,7 @@ export default function OnboardingScreen() {
   const [workoutFrequency, setWorkoutFrequency] = useState<number>(5); // Default to 5 as shown in the image
   const [healthConcerns, setHealthConcerns] = useState<HealthConcern[]>([]);
   const [dailyCalorieGoal, setDailyCalorieGoal] = useState<number | null>(null);
+  const [bmrValue, setBmrValue] = useState<number | null>(null);
   
   // Function to convert feet/inches to cm
   const feetInchesToCm = (feet: string, inches: string): string => {
@@ -479,8 +481,9 @@ export default function OnboardingScreen() {
             age={age}
             gender={gender}
             activityLevel={activityLevel}
-            onNext={(targetWt, calories) => {
+            onNext={(targetWt, bmr, calories) => {
               setTargetWeight(targetWt);
+              setBmrValue(bmr); 
               setDailyCalorieGoal(calories);
               nextStep();
             }}
@@ -666,13 +669,143 @@ export default function OnboardingScreen() {
             </View>
             
             <TouchableOpacity 
-              onPress={saveUserProfile}
+              onPress={nextStep}
               className="bg-orange-400 p-4 rounded-lg items-center mt-6"
             >
               <Text className="text-white font-semibold">Next</Text>
             </TouchableOpacity>
           </View>
         );
+        case 12:
+  // Calculate BMR based on user data
+
+  
+  // Calculate daily calories based on BMR and activity level
+
+
+  
+  // Calculate macronutrients
+  const calculateMacros = (calories: number) => {
+    // Protein: 30%, Carbs: 50%, Fat: 20%
+    const protein = (calories * 0.3) / 4; // 4 calories per gram of protein
+    const carbs = (calories * 0.5) / 4;   // 4 calories per gram of carbs
+    const fat = (calories * 0.2) / 9;     // 9 calories per gram of fat
+    
+    return {
+      protein: protein.toFixed(2),
+      carbs: carbs.toFixed(2),
+      fat: fat.toFixed(2)
+    };
+  };
+  
+  const macros = calculateMacros(dailyCalorieGoal!);
+  
+  // Update state with calculated values
+
+  
+  return (
+    <View className="flex-1 justify-center p-6 bg-gray-100">
+      <View className="bg-white rounded-xl p-6">
+        <Text className="text-3xl font-bold text-orange-400 mb-4">Your BMR Calculation</Text>
+        
+        <Text className="text-gray-600 mb-6 text-center">
+          Your Basal Metabolic Rate (BMR) is the number of calories your body needs for basic functions like 
+          breathing and digestion, calculated using your age, gender, weight, and height.
+        </Text>
+        
+        <View className="bg-gray-100 rounded-lg p-4 mb-6">
+          <Text className="text-xl text-center text-orange-400 font-medium">
+            Your BMR is: {bmrValue!.toFixed(2)} calories/day
+          </Text>
+        </View>
+        
+        <Text className="text-2xl font-bold text-gray-700 mb-2">Estimated Daily Calorie Intake</Text>
+        <Text className="text-gray-600 mb-4 text-center">
+          Based on your activity level, here is the breakdown of your daily calories and macronutrients
+        </Text>
+        
+        <View className="items-center mb-6">
+          <Text className="text-4xl font-bold text-orange-400">
+            {dailyCalorieGoal}
+          </Text>
+          <Text className="text-gray-500">calories/day</Text>
+        </View>
+        
+        <View className="flex-row justify-between mb-6">
+          <View className="bg-white rounded-lg p-4 shadow w-[30%] items-center">
+            <Text className="font-bold text-gray-700">Protein</Text>
+            <Text className="text-orange-400 font-bold">{macros.protein} g</Text>
+            <Text className="text-xs text-gray-500 text-center mt-2">
+              Protein is essential for muscle growth and repair.
+            </Text>
+          </View>
+          
+          <View className="bg-white rounded-lg p-4 shadow w-[30%] items-center">
+            <Text className="font-bold text-gray-700">Carbs</Text>
+            <Text className="text-orange-400 font-bold">{macros.carbs} g</Text>
+            <Text className="text-xs text-gray-500 text-center mt-2">
+              Carbohydrates provide energy for your body and brain.
+            </Text>
+          </View>
+          
+          <View className="bg-white rounded-lg p-4 shadow w-[30%] items-center">
+            <Text className="font-bold text-gray-700">Fat</Text>
+            <Text className="text-orange-400 font-bold">{macros.fat} g</Text>
+            <Text className="text-xs text-gray-500 text-center mt-2">
+              Fats help absorb vitamins and provide long-term energy.
+            </Text>
+          </View>
+        </View>
+      </View>
+      
+      <TouchableOpacity 
+        onPress={nextStep}
+        className="bg-orange-400 p-4 rounded-lg items-center mt-6"
+      >
+        <Text className="text-white font-semibold">Submit</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+// For the Congratulations Screen (case 13)
+case 13:
+  return (
+    <View className="flex-1 justify-center p-6 bg-gray-100">
+      <View className="bg-white rounded-xl p-6 items-center">
+        {/* Celebration icon/animation */}
+        <View className="mb-8">
+          {/* This is a simplified version of the fireworks/celebration in your mockup */}
+          <View className="w-32 h-32 items-center justify-center">
+            <Ionicons name="star" size={48} color="#F5A623" />
+            <View className="absolute top-0 right-0">
+              <Ionicons name="star" size={24} color="#F5A623" />
+            </View>
+            <View className="absolute bottom-0 left-0">
+              <Ionicons name="star" size={16} color="#F5A623" />
+            </View>
+            <View className="absolute top-2 left-2">
+              <Ionicons name="star" size={20} color="#F5A623" />
+            </View>
+          </View>
+        </View>
+        
+        <Text className="text-4xl font-bold text-purple-600 mb-6">Congratulations!</Text>
+        
+        <Text className="text-xl text-center text-gray-600 mb-8">
+          You're on your journey to better health! Enjoy every step as you work towards your goals.
+        </Text>
+        
+        <TouchableOpacity 
+          onPress={saveUserProfile}
+          className="bg-orange-400 p-4 rounded-lg items-center w-full mb-4"
+        >
+          <Text className="text-white font-semibold">Continue</Text>
+        </TouchableOpacity>
+        
+        <Text className="text-gray-400 text-center">Let's make every meal count!</Text>
+      </View>
+    </View>
+  );
     }
   };
   

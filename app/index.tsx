@@ -103,8 +103,10 @@ export default function IndexScreen() {
         
         if (userSnap.exists()) {
           // User has profile, go to home
+          console.log("User has profile, going to home");
           router.replace("/(app)/home");
         } else {
+          console.log("User does not have profile, going to onboarding");
           // User is logged in but no profile:
           // First show feature slides, then onboarding
           setIsLoading(false);

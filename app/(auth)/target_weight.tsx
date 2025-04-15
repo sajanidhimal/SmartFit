@@ -14,7 +14,7 @@ export default function TargetWeightScreen({
   age: string;
   gender: string;
   activityLevel: string;
-  onNext: (targetWeight: string, targetCalories: number) => void;
+  onNext: (targetWeight: string, bmr: number, targetCalories: number) => void;
 }) {
   const [targetWeight, setTargetWeight] = useState('');
   const [targetCalories, setTargetCalories] = useState(0);
@@ -156,7 +156,7 @@ export default function TargetWeightScreen({
         className={`w-full rounded-lg p-4 items-center ${
           !showResults ? 'bg-[#f8c980]' : 'bg-[#f8a427]'
         }`}
-        onPress={() => onNext(targetWeight, targetCalories)}
+        onPress={() => onNext(targetWeight, calculateBMR(), targetCalories)}
         disabled={!showResults}
       >
         <Text className="text-white text-base font-bold">Next</Text>
