@@ -1,52 +1,11 @@
 // app/index.js
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Image, Text, ActivityIndicator, Animated, Dimensions, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Image, Text, ActivityIndicator, Animated, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { auth, db } from './firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { doc, getDoc } from 'firebase/firestore';
-
-// Feature slide type
-type FeatureSlide = {
-  id: number;
-  title: string;
-  description: string;
-  image: any;
-};
-
-// Feature slides
-const features: FeatureSlide[] = [
-  {
-    id: 1,
-    title: "Smart Calorie Estimation & Dietary Planner",
-    description: "Ready to take control of your health? It just takes a minute to set up — let's begin!",
-    image: require('../assets/images/feature-1.png')
-  },
-  {
-    id: 2,
-    title: "Balance Your Calories, Boost Your Health!",
-    description: "Prioritize your health by staying aware of what you consume.",
-    image: require('../assets/images/feature-2.png')
-  },
-  {
-    id: 3,
-    title: "Capture Your Food, Track Your Calories",
-    description: "Take a photo of your food and stay in control of your calories.",
-    image: require('../assets/images/feature-3.png')
-  },
-  {
-    id: 4,
-    title: "Burn Calories with Guided Exercises",
-    description: "Stay active with guided exercises and burn calories effortlessly—every move brings you closer to your goals!",
-    image: require('../assets/images/feature-4.png')
-  },
-  {
-    id: 5,
-    title: "Every Step Counts!",
-    description: "Monitor your steps and track calories burned — achieve your goals, one step at a time.",
-    image: require('../assets/images/feature-5.png')
-  }
-];
+import FeatureScreens from './components/FeatureScreens';
 
 export default function IndexScreen() {
   const router = useRouter();
@@ -57,10 +16,6 @@ export default function IndexScreen() {
   // State for app flow
   const [isLoading, setIsLoading] = useState(true);
   const [showWelcome, setShowWelcome] = useState(false);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const scrollViewRef = useRef<ScrollView>(null);
-  const welcomeFadeAnim = useRef(new Animated.Value(0)).current;
-  const [pendingRedirect, setPendingRedirect] = useState<string | null>(null);
 
   useEffect(() => {
     // Start the splash animation when component mounts
@@ -106,18 +61,10 @@ export default function IndexScreen() {
           console.log("User has profile, going to home");
           router.replace("/(app)/home");
         } else {
-          console.log("User does not have profile, going to onboarding");
           // User is logged in but no profile:
           // First show feature slides, then onboarding
           setIsLoading(false);
           setShowWelcome(true);
-          // Fade in the welcome screen
-          Animated.timing(welcomeFadeAnim, {
-            toValue: 1,
-            duration: 500,
-            useNativeDriver: true,
-          }).start();
-          setPendingRedirect("/(auth)/onboarding");
         }
       } catch (error) {
         console.error("Error checking Firestore user profile:", error);
@@ -128,21 +75,8 @@ export default function IndexScreen() {
     checkAuthAndRedirect();
   }, []);
 
-  // Handle next slide in welcome
-  const handleNext = () => {
-    if (currentIndex < features.length - 1) {
-      const nextIndex = currentIndex + 1;
-      setCurrentIndex(nextIndex);
-      scrollViewRef.current?.scrollTo({ x: nextIndex * width, animated: true });
-    } else {
-      // User has seen all feature slides, now go to onboarding
-      router.replace("/(auth)/onboarding");
-    }
-  };
-
-  // Handle skip in welcome
-  const handleSkip = () => {
-    // Skip the rest of the slides and go to onboarding
+  const handleFeatureScreensComplete = () => {
+    // Feature screens are done, go to onboarding
     router.replace("/(auth)/onboarding");
   };
 
@@ -193,64 +127,7 @@ export default function IndexScreen() {
 
   // Welcome screen view
   if (showWelcome) {
-    return (
-      <Animated.View className="flex-1 bg-white" style={{ opacity: welcomeFadeAnim }}>
-        <ScrollView
-          ref={scrollViewRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onMomentumScrollEnd={(event) => {
-            const newIndex = Math.round(event.nativeEvent.contentOffset.x / width);
-            setCurrentIndex(newIndex);
-          }}
-        >
-          {features.map((feature) => (
-            <View 
-              key={feature.id} 
-              style={{ width, height: '100%' }}
-              className="p-6 justify-center items-center"
-            >
-              <Image
-                source={feature.image}
-                className="w-64 h-64 mb-8"
-                resizeMode="contain"
-              />
-              <Text className="text-2xl font-bold mb-4 text-center">{feature.title}</Text>
-              <Text className="text-gray-600 text-center mb-8">{feature.description}</Text>
-            </View>
-          ))}
-        </ScrollView>
-
-        {/* Pagination dots */}
-        <View className="flex-row justify-center mb-6">
-          {features.map((_, index) => (
-            <View
-              key={index}
-              className={`h-2 w-2 rounded-full mx-1 ${
-                index === currentIndex ? 'bg-orange-500 w-8' : 'bg-gray-300'
-              }`}
-            />
-          ))}
-        </View>
-
-        {/* Bottom buttons */}
-        <View className="flex-row justify-between items-center px-6 pb-8">
-          <TouchableOpacity onPress={handleSkip}>
-            <Text className="text-gray-500">Skip</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            onPress={handleNext}
-            className="bg-orange-400 px-8 py-3 rounded-full"
-          >
-            <Text className="text-white font-semibold">
-              {currentIndex === features.length - 1 ? "Let's Start" : "Next"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </Animated.View>
-    );
+    return <FeatureScreens onComplete={handleFeatureScreensComplete} />;
   }
   
   // Shouldn't reach here normally, but just in case

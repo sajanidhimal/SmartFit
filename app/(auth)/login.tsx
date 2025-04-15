@@ -4,13 +4,16 @@ import { View, Text, TextInput, TouchableOpacity, Image, Alert } from 'react-nat
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
-import {auth} from '../firebase';
+import { auth, db } from '../firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import FeatureScreens from '../components/FeatureScreens';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showFeatureScreens, setShowFeatureScreens] = useState(false);
   
   const router = useRouter();
 
@@ -22,14 +25,36 @@ export default function LoginScreen() {
     
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth,email, password);
-      router.replace('/(app)/home'); // Navigate to app home after successful login
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      // Check if user has a profile
+      const userRef = doc(db, "userProfiles", user.uid);
+      const userSnap = await getDoc(userRef);
+      
+      if (userSnap.exists()) {
+        // User has a profile, go to home
+        router.replace('/(app)/home');
+      } else {
+        // User doesn't have a profile, show feature screens
+        setShowFeatureScreens(true);
+      }
     } catch (error:any) {
       Alert.alert('Login Failed', error.message);
     } finally {
       setLoading(false);
     }
   };
+
+  const handleFeatureScreensComplete = () => {
+    // Feature screens are done, go to onboarding
+    router.replace('/(auth)/onboarding');
+  };
+
+  // Show feature screens if needed
+  if (showFeatureScreens) {
+    return <FeatureScreens onComplete={handleFeatureScreensComplete} />;
+  }
 
   return (
     <View className="flex-1 bg-white p-6">

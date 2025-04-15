@@ -3,8 +3,9 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Image, Alert } from 'react-native';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useRouter } from 'expo-router';
-import {auth}  from '../firebase'; 
+import { auth } from '../firebase'; 
 import { Feather } from '@expo/vector-icons';
+import FeatureScreens from '../components/FeatureScreens';
 
 export default function SignUpScreen() {
   const [email, setEmail] = useState('');
@@ -13,6 +14,7 @@ export default function SignUpScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showFeatureScreens, setShowFeatureScreens] = useState(false);
   
   const router = useRouter();
 
@@ -30,14 +32,23 @@ export default function SignUpScreen() {
     setLoading(true);
     try {
       await createUserWithEmailAndPassword(auth, email, password);
-      // After signup, redirect to onboarding screens
-      router.push('/(auth)/onboarding');
+      // After signup, show feature screens before onboarding
+      setShowFeatureScreens(true);
     } catch (error:any) {
       Alert.alert('Sign Up Failed', error.message);
-    } finally {
       setLoading(false);
     }
   };
+
+  const handleFeatureScreensComplete = () => {
+    // Feature screens are done, go to onboarding
+    router.replace('/(auth)/onboarding');
+  };
+
+  // Show feature screens if needed
+  if (showFeatureScreens) {
+    return <FeatureScreens onComplete={handleFeatureScreensComplete} />;
+  }
 
   return (
     <View className="flex-1 bg-white p-6">

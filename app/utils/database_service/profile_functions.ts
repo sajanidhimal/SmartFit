@@ -1,4 +1,5 @@
 import { db } from "@/app/firebase";
+import { router } from "expo-router";
 import {
   addDoc,
   collection,
@@ -8,6 +9,7 @@ import {
   getDoc,
   getDocs,
 } from "firebase/firestore";
+import { Animated } from "react-native";
 
 // ---------- Types ----------
 export interface UserProfile {
@@ -144,3 +146,5 @@ export const updateUserTargets = async (
     return { success: false, error: error.message };
   }
 };
+
+
