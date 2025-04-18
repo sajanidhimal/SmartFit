@@ -122,6 +122,12 @@ export default function AppLayout() {
     }}
   />
   <Tabs.Screen 
+    name="chat/index" 
+    options={{
+      href: null, // This prevents it from showing in the tab bar
+    }}
+  />
+  <Tabs.Screen 
     name="fitness/workout/[id]" 
     options={{
       href: null, // This prevents it from showing in the tab bar

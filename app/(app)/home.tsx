@@ -611,44 +611,43 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-100 w-full">
+    <SafeAreaView className="flex-1 bg-gray-50">
       <ScrollView 
-        className="flex-1 px-4 mb-16 w-full"
+        className="flex-1"
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={["#f97316"]}
-            tintColor="#f97316"
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Header */}
-        <View className="flex-row justify-between items-center py-6 w-full">
+        <View className="flex-row justify-between items-center px-5 py-4">
           <View>
-            <Text className="text-lg text-gray-500">Welcome</Text>
-            <Text className="text-3xl font-bold text-gray-800">
-              {/* Friendly greeting based on gender if name is not available */}
-              {userProfile?.name || (userProfile?.gender === 'Male' || userProfile?.gender?.toLowerCase() === 'male' ? 'Sir' : 
-               userProfile?.gender === 'Female' || userProfile?.gender?.toLowerCase() === 'female' ? 'Ma\'am' : 'User')}!
+            <Text className="text-2xl font-bold text-gray-800">
+              Hello, {userProfile?.name || 'Fitness Enthusiast'}
             </Text>
+            <Text className="text-gray-500">Let's check your progress</Text>
           </View>
+          
           <View className="flex-row">
-          <TouchableOpacity 
-              onPress={handleLogout}
-              className="w-10 h-10 bg-red-500 rounded-full items-center justify-center mr-2"
+            {/* add profile icon */}
+            <TouchableOpacity 
+              className="w-10 h-10 rounded-full bg-white shadow-sm mr-2 items-center justify-center"
+              onPress={() => router.push('/profile')}
             >
-              <Ionicons name="log-out-outline" size={24} color="white" />
+              <Ionicons name="person-outline" size={20} color="#8A2BE2" />
             </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={() => {
-              router.push('/profile');
-            }}
-            className="w-10 h-10 bg-gray-300 rounded-full items-center justify-center"
-          >
-            <Ionicons name="person" size={24} color="#777" />
-          </TouchableOpacity>
-                </View>
+            <TouchableOpacity 
+              className="w-10 h-10 rounded-full bg-white shadow-sm mr-2 items-center justify-center"
+              onPress={() => router.push('/chat')}
+            >
+              <Ionicons name="chatbubbles" size={20} color="#8A2BE2" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              className="w-10 h-10 rounded-full bg-white shadow-sm items-center justify-center"
+              onPress={handleLogout}
+            >
+              <Ionicons name="log-out-outline" size={20} color="#FF4500" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Main Card */}
@@ -779,6 +778,28 @@ export default function HomeScreen() {
           selectedDate={selectedDate} 
           onDataUpdate={handleNutritionDataUpdate}
         />
+
+        {/* Daily Summary */}
+        <View className="mt-4 p-4 bg-white rounded-lg shadow-sm">
+          <Text className="text-lg font-bold text-gray-800 mb-4">Quick Access</Text>
+          <View className="flex-row justify-between mb-2">
+            <TouchableOpacity 
+              onPress={() => router.push('/fitness')}
+              className="bg-primary/10 rounded-lg p-4 items-center w-[48%]"
+            >
+              <Ionicons name="barbell" size={24} color="#8A2BE2" />
+              <Text className="font-medium text-gray-700 mt-2">Workouts</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              onPress={() => router.push('/chat')}
+              className="bg-primary/10 rounded-lg p-4 items-center w-[48%]"
+            >
+              <Ionicons name="chatbubbles" size={24} color="#8A2BE2" />
+              <Text className="font-medium text-gray-700 mt-2">AI Coach</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
