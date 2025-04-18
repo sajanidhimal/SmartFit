@@ -66,13 +66,10 @@ export default function SplashScreen({ onFinish, duration = 3000 }: SplashScreen
             <Animated.View 
               className="h-1 bg-orange-400 rounded-full" 
               style={{ 
-                transform: [
-                  { scaleX: fadeAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, 1]
-                  }) }
-                ],
-                transformOrigin: 'left'
+                width: fadeAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['0%', '100%']
+                })
               }}
             />
           </View>

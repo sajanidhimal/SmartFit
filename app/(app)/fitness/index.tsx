@@ -200,7 +200,7 @@ export default function FitnessScreen() {
                       onPress={() => navigateToCategory(category.id)}
                     >
                       <Image
-                        source={{ uri: `https://picsum.photos/200/300?random=${index+1}` }}
+                        source={{ uri: category.image || `https://picsum.photos/200/300?random=${index+1}` }}
                         className="absolute w-full h-full"
                       />
                       <View className="w-full h-full bg-black/30 items-center justify-center">

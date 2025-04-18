@@ -78,29 +78,24 @@ export const getUserProfile = async (userId: string): Promise<Result<UserProfile
   }
 };
 
-    export const getAllUsers = async (): Promise<Result<UserProfile[]>> => {
-      try {
-        const usersCollectionRef = collection(db, "users");
-        const usersSnapshot = await getDocs(usersCollectionRef);
-        const users: UserProfile[] = [];
+export const getAllUsers = async (): Promise<Result<UserProfile[]>> => {
+  try {
+    const usersCollectionRef = collection(db, "users");
+    const usersSnapshot = await getDocs(usersCollectionRef);
+    const users: UserProfile[] = [];
 
-        console.log("users", users.length);
-        usersSnapshot.forEach((doc) => {
-          const userData = doc.data() as UserProfile;
-          users.push(userData);
-        });
+    console.log("users", users.length);
+    usersSnapshot.forEach((doc) => {
+      const userData = doc.data() as UserProfile;
+      users.push(userData);
+    });
 
-        return { success: true, data: users };
-      } catch (error: any) {
-        console.error("Error fetching all users:", error);
-        return { success: false, error: error.message };
-      }
-    };
-
-
-    
-  
-
+    return { success: true, data: users };
+  } catch (error: any) {
+    console.error("Error fetching all users:", error);
+    return { success: false, error: error.message };
+  }
+};
 
 // Update weight + log to weight history
 export const updateUserWeight = async (
@@ -143,6 +138,107 @@ export const updateUserTargets = async (
     return { success: true };
   } catch (error: any) {
     console.error("Error updating targets:", error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Update user profile with all editable fields
+export const updateUserProfile = async (
+  userId: string,
+  userData: {
+    gender?: string;
+    height?: number | string;
+    weight?: number | string;
+    age?: number | string;
+    activityLevel?: string;
+    targetWeight?: number | string;
+    dailyCalorieGoal?: number | string;
+    bmi?: number | string;
+  }
+): Promise<Result> => {
+  try {
+    // Convert all values to appropriate types
+    const updateData: any = {};
+    
+    if (userData.gender) updateData.gender = userData.gender;
+    if (userData.height) updateData.height = parseFloat(String(userData.height));
+    if (userData.weight) updateData.weight = parseFloat(String(userData.weight));
+    if (userData.age) updateData.age = parseInt(String(userData.age));
+    if (userData.activityLevel) updateData.activityLevel = userData.activityLevel;
+    if (userData.targetWeight) updateData.targetWeight = parseFloat(String(userData.targetWeight));
+    if (userData.dailyCalorieGoal) updateData.dailyCalorieGoal = parseFloat(String(userData.dailyCalorieGoal));
+    // Calculate BMI if both height and weight are provided
+    if (userData.height && userData.weight) {
+      const heightInMeters = parseFloat(String(userData.height)) / 100;
+      const weightInKg = parseFloat(String(userData.weight));
+      const bmi = weightInKg / (heightInMeters * heightInMeters);
+      updateData.bmi = parseFloat(bmi.toFixed(1));
+    }
+
+    // Calculate daily calorie goal if we have the necessary information
+    if ((userData.weight || updateData.weight) && 
+        (userData.height || updateData.height) && 
+        (userData.age || updateData.age) && 
+        (userData.gender || updateData.gender) && 
+        (userData.activityLevel || updateData.activityLevel)) {
+      
+      // Get existing user data to fill in missing fields
+      const userRef = doc(db, "userProfiles", userId);
+      const userSnap = await getDoc(userRef);
+      const existingData = userSnap.exists() ? userSnap.data() : {};
+      
+      const weight = userData.weight ? parseFloat(String(userData.weight)) : existingData.weight;
+      const height = userData.height ? parseFloat(String(userData.height)) : existingData.height;
+      const age = userData.age ? parseInt(String(userData.age)) : existingData.age;
+      const gender = userData.gender || existingData.gender;
+      const activityLevel = userData.activityLevel || existingData.activityLevel;
+      
+      // Calculate BMR using the formula
+      const bmr = gender.toLowerCase() === 'male'
+        ? 10 * weight + 6.25 * height - 5 * age + 5
+        : 10 * weight + 6.25 * height - 5 * age - 161;
+      
+      // Calculate TDEE based on activity level
+      const activityMultipliers: {[key: string]: number} = {
+        'sedentary': 1.2,
+        'light': 1.375,
+        'moderate': 1.55,
+        'active': 1.725,
+        'very active': 1.9
+      };
+      
+      // Normalize activity level (handle different formats)
+      const normalizedActivityLevel = activityLevel.toLowerCase().replace('_', ' ');
+      const multiplier = activityMultipliers[normalizedActivityLevel] || 1.2;
+      const tdee = Math.round(bmr * multiplier);
+      
+      // Adjust based on weight goal
+      const targetWeight = userData.targetWeight ? parseFloat(String(userData.targetWeight)) : existingData.targetWeight;
+      const weightDiff = weight - targetWeight;
+      let calorieAdjustment = weightDiff > 0 ? -500 : weightDiff < 0 ? 500 : 0;
+      const dailyCalorieGoal = Math.round(tdee + calorieAdjustment);
+      
+      updateData.bmr = Math.round(bmr);
+      updateData.dailyCalorieGoal = dailyCalorieGoal;
+    }
+    
+    // Update the document with timestamp
+    updateData.updatedAt = serverTimestamp();
+    
+    const userRef = doc(db, "userProfiles", userId);
+    await updateDoc(userRef, updateData);
+    
+    // If weight is updated, log to weight history
+    if (userData.weight) {
+      await addDoc(collection(db, "userProfiles", userId, "weightHistory"), {
+        weight: parseFloat(String(userData.weight)),
+        date: serverTimestamp(),
+      });
+    }
+    
+    return { success: true, data: updateData };
+  } catch (error: any) {
+    console.error("Error updating user profile:", error);
     return { success: false, error: error.message };
   }
 };

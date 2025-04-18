@@ -32,10 +32,11 @@ export default function StatsScreen() {
     if (!currentUser?.uid) return null;
     
     try {
-      // Get start of current week (Sunday)
+      // Get start of current week (Monday instead of Sunday)
       const now = new Date();
       const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() - now.getDay()); // Set to Sunday
+      // Set to previous Monday (1 = Monday, 0 = Sunday)
+      startOfWeek.setDate(now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1));
       startOfWeek.setHours(0, 0, 0, 0);
       
       // Get weekly summary data
@@ -126,7 +127,7 @@ export default function StatsScreen() {
   const dailyData = useMemo(() => {
     const calculateDailyData = (type: 'calories' | 'protein' | 'carbs' | 'fats' | 'workouts'): number[] => {
       if (!weeklyData || weeklyData.length === 0) {
-        return [0, 0, 0, 0, 0, 0, 0]; // Default zeros for 7 days
+        return [0, 0, 0, 0, 0, 0, 0]; // Default zeros for 7 days (Mon-Sun)
       }
       
       const result = new Array(7).fill(0);
@@ -313,12 +314,11 @@ export default function StatsScreen() {
       }));
     }
     
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    // Use Monday-Sunday order for display
+    const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     
     return weeklyData.map((day, index) => {
-      const date = new Date();
-      date.setDate(date.getDate() - date.getDay() + index);
-      const dayName = dayNames[date.getDay()];
+      const dayName = dayNames[index];
       
       const intake = day.totalCaloriesIn || 0;
       const burned = (day.totalCaloriesOut || 0) + (day.tdee || 0);

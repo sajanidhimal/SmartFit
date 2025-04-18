@@ -38,7 +38,8 @@ export default function OnboardingScreen() {
   const [name, setName] = useState<string>('');
   const [bmi, setBmi] = useState<number | null>(null);
   const [activityLevel, setActivityLevel] = useState<ActivityLevel | ''>('');
-  const [targetWeight, setTargetWeight] = useState<string>('');
+  const [targetWeight, setTargetWeight] = useState<string>(''); // Weight goal in kg from the target_weight screen
+  const [stepGoal, setStepGoal] = useState(''); // Daily step goal (separate from weight goal to avoid conflicts)
   const [workoutFrequency, setWorkoutFrequency] = useState<number>(5); // Default to 5 as shown in the image
   const [healthConcerns, setHealthConcerns] = useState<HealthConcern[]>([]);
   const [dailyCalorieGoal, setDailyCalorieGoal] = useState<number | null>(null);
@@ -106,10 +107,11 @@ export default function OnboardingScreen() {
           age: parseInt(age),
           bmi,
           activityLevel,
-          targetWeight: parseFloat(targetWeight),
+          targetWeight: parseFloat(targetWeight), // User's target weight goal in kg
           dailyCalorieGoal,
           workoutFrequency,
           healthConcerns,
+          stepGoal: parseInt(stepGoal) || 10000, // Daily step count goal (separate from weight goal)
           createdAt: new Date()
         });
         const userDoc = await getDoc(doc(db, "userProfiles", user.uid));
@@ -380,68 +382,98 @@ export default function OnboardingScreen() {
           </View>
         );
         
-      case 5:
-        // Calculate BMI category
-        const getBmiCategory = () => {
-          if (!bmi) return { category: 'Normal', color: 'text-green-500' };
+        case 5:
+          // Calculate BMI category
+          const getBmiCategory = () => {
+            if (!bmi) return { category: 'Normal', color: 'text-green-500', bgColor: 'bg-green-100' };
+            
+            if (bmi < 18.5) return { category: 'Underweight', color: 'text-blue-500', bgColor: 'bg-blue-100' };
+            if (bmi < 25) return { category: 'Normal', color: 'text-green-500', bgColor: 'bg-green-100' };
+            if (bmi < 30) return { category: 'Overweight', color: 'text-yellow-500', bgColor: 'bg-yellow-100' };
+            return { category: 'Obese', color: 'text-red-500', bgColor: 'bg-red-100' };
+          };
           
-          if (bmi < 18.5) return { category: 'Underweight', color: 'text-blue-500' };
-          if (bmi < 25) return { category: 'Normal', color: 'text-green-500' };
-          if (bmi < 30) return { category: 'Overweight', color: 'text-yellow-500' };
-          return { category: 'Obese', color: 'text-red-500' };
-        };
-        
-        const bmiCategory = getBmiCategory();
-        
-        // Calculate needle position (0-100%)
-        const getNeedlePosition = () => {
-          if (!bmi) return 50;
-          if (bmi < 16) return 0;
-          if (bmi > 35) return 100;
+          const bmiCategory = getBmiCategory();
           
-          // Map BMI range 16-35 to 0-100%
-          return ((bmi - 16) / (35 - 16)) * 100;
-        };
-        
-        const needlePosition = getNeedlePosition();
-        
-        return (
-          <View className="flex-1 justify-center p-6 bg-gray-100">
-            <View className="bg-white rounded-xl p-6">
-              <Text className="text-xl font-bold mb-4">Your BMI Result is</Text>
-              
-              {/* BMI Gauge Visualization */}
-              <View className="items-center mb-6">
-                {/* Gauge */}
-                <View className="relative w-full h-32 mb-4">
-                  {/* Gauge background */}
-                  <View className="absolute w-full h-16 overflow-hidden">
-                    <View className="bg-gradient-to-r from-blue-500 via-green-500 via-yellow-500 to-red-500 h-full rounded-t-full" />
+          // Calculate position for progress bar (0-100%)
+          const getBmiProgress = () => {
+            if (!bmi) return 50;
+            if (bmi < 16) return 0;
+            if (bmi > 35) return 100;
+            
+            // Map BMI range 16-35 to 0-100%
+            return ((bmi - 16) / (35 - 16)) * 100;
+          };
+          
+          const bmiProgress = getBmiProgress();
+          
+          // Calculate healthy weight range based on height
+          const getHealthyWeightRange = () => {
+            const heightInM = parseFloat(heightCm) / 100;
+            if (!heightInM || heightInM <= 0) return "N/A";
+            
+            const minWeight = (18.5 * heightInM * heightInM).toFixed(1);
+            const maxWeight = (24.9 * heightInM * heightInM).toFixed(1);
+            
+            return `${minWeight} kg - ${maxWeight} kg`;
+          };
+          
+          // Calculate specific positions for scale markers (in percentage)
+          const getScalePosition = (bmiValue: number) => {
+            return ((bmiValue - 16) / (35 - 16)) * 100;
+          };
+          
+          // BMI scale marker positions
+          const underweightPosition = getScalePosition(18.5);
+          const normalPosition = getScalePosition(25);
+          const overweightPosition = getScalePosition(30);
+          
+          return (
+            <View className="flex-1 justify-center p-6 bg-gray-100">
+              <View className="bg-white rounded-xl p-6">
+                <Text className="text-xl font-bold mb-4">Your BMI Result</Text>
+                
+                {/* BMI Value Display */}
+                <View className="items-center mb-6">
+                  <View className={`rounded-full p-6 ${bmiCategory.bgColor} mb-3`}>
+                    <Text className={`text-4xl font-bold ${bmiCategory.color}`}>
+                      {bmi?.toFixed(2)}
+                    </Text>
                   </View>
-                  
-                  {/* Needle */}
-                  <View className="absolute w-full" style={{ top: 16 }}>
+                  <Text className="text-lg font-semibold mb-1">{bmiCategory.category}</Text>
+                  <Text className="text-sm text-gray-500 mb-3">{weight} kg | {gender} | {age} years old</Text>
+                </View>
+                
+                {/* BMI Progress Bar - Fixed with accurate segment positions */}
+                <View className="mb-3">
+                  <View className="relative w-full h-6 bg-gray-200 rounded-full overflow-hidden mb-2">
+                    {/* Colored segments for BMI ranges with accurate positions */}
+                    <View className="absolute h-full bg-blue-400" style={{ left: '0%', width: `${underweightPosition}%` }} />
+                    <View className="absolute h-full bg-green-400" style={{ left: `${underweightPosition}%`, width: `${normalPosition - underweightPosition}%` }} />
+                    <View className="absolute h-full bg-yellow-400" style={{ left: `${normalPosition}%`, width: `${overweightPosition - normalPosition}%` }} />
+                    <View className="absolute h-full bg-red-400" style={{ left: `${overweightPosition}%`, width: `${100 - overweightPosition}%` }} />
+                    
+                    {/* BMI marker - now positioned accurately */}
                     <View 
-                      className="absolute h-16 flex flex-col items-center"
-                      style={{ left: `${needlePosition}%`, marginLeft: -1 }}
-                    >
-                      <View className="h-14 w-[2px] bg-black" />
-                      <View className="h-4 w-4 rounded-full bg-black mt-[-2px]" />
-                    </View>
+                      className="absolute h-full w-3 bg-black" 
+                      style={{ left: `${bmiProgress}%`, marginLeft: -1.5 }} 
+                    />
                   </View>
                   
-                  {/* BMI Range markers */}
-                  <View className="absolute w-full flex-row justify-between" style={{ top: 64 }}>
-                    <Text className="text-xs text-blue-500">Underweight</Text>
-                    <Text className="text-xs text-green-500">Normal</Text>
-                    <Text className="text-xs text-yellow-500">Overweight</Text>
-                    <Text className="text-xs text-red-500">Obese</Text>
+                  {/* BMI Scale labels */}
+                  <View className="flex-row">
+                    <Text className="text-xs text-blue-500 absolute left-0">16</Text>
+                    <Text className="text-xs text-blue-500 absolute" style={{ left: `${underweightPosition}%` }}>18.5</Text>
+                    <Text className="text-xs text-green-500 absolute" style={{ left: `${normalPosition}%` }}>25</Text>
+                    <Text className="text-xs text-yellow-500 absolute" style={{ left: `${overweightPosition}%` }}>30</Text>
+                    <Text className="text-xs text-red-500 absolute right-0">35+</Text>
                   </View>
                 </View>
                 
-                <Text className="text-xl font-bold mb-1">BMI: {bmi?.toFixed(1)} kg/m²</Text>
-                <Text className="text-sm text-gray-500 mb-3">{weight} kg | {gender} | {age} years old</Text>
-                
+                {/* Add space after the labels */}
+                <View className="mb-6" />
+        
+                {/* Information panel */}
                 <View className="flex-row items-center justify-between w-full mb-6 bg-gray-100 rounded-lg p-4">
                   <View className="items-center">
                     <Text className="text-sm font-medium">Category</Text>
@@ -452,27 +484,28 @@ export default function OnboardingScreen() {
                   
                   <View className="items-center">
                     <Text className="text-sm font-medium">Healthy Range</Text>
-                    <Text className="text-sm text-gray-700">55.9 kg - 75.2 kg</Text>
+                    <Text className="text-sm text-gray-700">{getHealthyWeightRange()}</Text>
                   </View>
                 </View>
                 
-                <Text className="text-sm text-gray-600 text-center mb-4">
-                  {bmiCategory.category === 'Normal' 
-                    ? "Great job! Your weight is in the normal range. Keep maintaining your healthy habits with a balanced diet and regular exercise to stay on track."
-                    : "We'll help you reach a healthier weight with personalized diet and exercise recommendations."}
-                </Text>
+                {/* Recommendation card */}
+                <View className={`p-4 rounded-lg ${bmiCategory.bgColor}`}>
+                  <Text className="text-sm text-gray-700 text-center">
+                    {bmiCategory.category === 'Normal' 
+                      ? "Great job! Your weight is in the normal range. Keep maintaining your healthy habits with a balanced diet and regular exercise to stay on track."
+                      : "We'll help you reach a healthier weight with personalized diet and exercise recommendations tailored just for you."}
+                  </Text>
+                </View>
               </View>
+              
+              <TouchableOpacity 
+                onPress={nextStep}
+                className="bg-orange-400 p-4 rounded-lg items-center mt-6"
+              >
+                <Text className="text-white font-semibold">Continue</Text>
+              </TouchableOpacity>
             </View>
-            
-            <TouchableOpacity 
-              onPress={nextStep}
-              className="bg-orange-400 p-4 rounded-lg items-center mt-6"
-            >
-              <Text className="text-white font-semibold">Continue</Text>
-            </TouchableOpacity>
-          </View>
-        );
-      
+          );
       case 6:
         return (
           <TargetWeightScreen
@@ -505,17 +538,17 @@ export default function OnboardingScreen() {
                     style={{ height: 180 }}
                     onMomentumScrollEnd={(event) => {
                       const steps = Array.from({ length: 10 }, (_, i) => ((i + 3) * 1000).toString());
-                      handleScroll(event, setTargetWeight, steps);
+                      handleScroll(event, setStepGoal, steps);
                     }}
                   >
                     {Array.from({ length: 10 }, (_, i) => ((i + 3) * 1000).toString()).map((steps) => (
                       <TouchableOpacity
                         key={`steps-${steps}`}
-                        onPress={() => setTargetWeight(steps)}
+                        onPress={() => setStepGoal(steps)}
                         style={{ height: 60, justifyContent: 'center', alignItems: 'center' }}
                       >
                         <Text 
-                          className={`text-xl ${targetWeight === steps ? 'text-orange-500 font-bold' : 'text-gray-400'}`}
+                          className={`text-xl ${stepGoal === steps ? 'text-orange-500 font-bold' : 'text-gray-400'}`}
                         >
                           {steps} <Text className="text-sm text-gray-400">steps</Text>
                         </Text>
@@ -533,7 +566,7 @@ export default function OnboardingScreen() {
             <TouchableOpacity 
               onPress={nextStep}
               className="bg-orange-400 p-4 rounded-lg items-center mt-6"
-              disabled={!targetWeight}
+              disabled={!stepGoal}
             >
               <Text className="text-white font-semibold">Next</Text>
             </TouchableOpacity>

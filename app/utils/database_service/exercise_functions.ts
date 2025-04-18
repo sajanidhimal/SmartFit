@@ -23,6 +23,7 @@ export interface CategoryData {
   id: string;
   name: string;
   icon?: string;
+  image?: string | null;
 }
 
 // Generic response type
@@ -92,23 +93,28 @@ export const getExercises = async (
 export const getExerciseCategories = async (): Promise<Result<CategoryData[]>> => {
   try {
     // Define your known category IDs
-    const categoryIds = ['cardio', 'strength_training', 'bodyweight', 'camera_detection'];
+    const categoryIds = ['cardio', 'strength_training', 'bodyweight', 'aerobic'];
     
     // Map the categories to have proper structure with ID and name
     const categories: CategoryData[] = [];
     
     // Default icons mapping
     const iconMapping: { [key: string]: string } = {
-      'cardio': 'bicycle-outline',
-      'strength_training': 'barbell-outline',
-      'bodyweight': 'body-outline',
-      'camera_detection': 'camera-outline',
-      'yoga': 'walk-outline',
-      'hiit': 'fitness-outline',
-      'sports': 'basketball-outline',
-      'fullbody': 'body-outline'
+						"cardio": "bicycle-outline",
+						"strength_training": "barbell-outline",
+						"bodyweight": "body-outline",
+						"aerobic": "walk-outline",
+						"yoga": "walk-outline",
+						"hiit": "fitness-outline",
+						"sports": "basketball-outline",
+						"fullbody": "body-outline",
     };
-    
+    const imageMapping: { [key: string]: string } = {
+      "cardio": "https://img.freepik.com/free-photo/happy-female-athlete-running-treadmill-gym_637285-8562.jpg",
+      "strength_training": "https://hips.hearstapps.com/hmg-prod/images/how-to-start-weight-lifting-strength-training-for-women-1647617733.jpg?crop=0.887037037037037xw:1xh;center,top&resize=1200:*",
+      "bodyweight": "https://cdn.squats.in/kc_articles/2f34cec9bc222f4cc9a3c72e731015f7.jpg",
+      "aerobic": "https://img.freepik.com/free-vector/flat-hand-drawn-dance-fitness-class-illustration_52683-56671.jpg?semt=ais_hybrid&w=740",
+    };
     // Check each category and verify if it exists by attempting to read its "exercises" subcollection
     for (const id of categoryIds) {
       try {
@@ -126,6 +132,7 @@ export const getExerciseCategories = async (): Promise<Result<CategoryData[]>> =
           id: id,
           name: name,
           icon: iconMapping[id] || 'fitness-outline',
+          image: imageMapping[id] || 'https://picsum.photos/200/300?random=1',
         });
       } catch (err) {
         console.log(`Category ${id} might not exist:`, err);

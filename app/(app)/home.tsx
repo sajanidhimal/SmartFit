@@ -27,7 +27,7 @@ import {
   
 } from '../utils/database_service/exercise_tracking_functions';
 
-import { collection, getDocs, Timestamp } from 'firebase/firestore';
+import { addDoc, collection, getDocs, Timestamp, query, where, orderBy, limit, runTransaction, doc, getDoc, setDoc } from 'firebase/firestore';
 import { seedDefaultExerciseDatabase, seedDefaultFoodDatabase } from '../utils/database_service/seed_data';
 import { auth, db } from '../firebase';
 
@@ -200,16 +200,18 @@ export default function HomeScreen() {
     }
   };
 
-  // Load water intake from AsyncStorage on component mount
+  // Load water intake from Firestore on component mount
   useEffect(() => {
-    loadWaterIntake();
-  }, []);
+    if (userId) {
+      loadWaterIntake();
+    }
+  }, [userId]);
 
   // Check water intake when the component mounts and when water stats change
   useEffect(() => {
     const checkWaterIntake = async () => {
       // Only check if the app has finished loading and we're in a stable state
-      if (!isLoading && dataLoaded) {
+      if (!isLoading && dataLoaded && userId) {
         // Get today's date string in YYYY-MM-DD format
         const today = new Date().toISOString().split('T')[0];
         
@@ -219,9 +221,10 @@ export default function HomeScreen() {
         // Check if water intake is less than recommended and it's after 4 PM
         if (dailyStats.water.current < MIN_RECOMMENDED_WATER && currentHour >= 16) {
           // Check if we've already shown the alert today
-          const alreadyAlerted = await AsyncStorage.getItem(`water_alert_${today}`);
+          const alertRef = doc(db, "userProfiles", userId, "waterAlerts", today);
+          const alertSnap = await getDoc(alertRef);
           
-          if (!alreadyAlerted) {
+          if (!alertSnap.exists()) {
             Alert.alert(
               "Hydration Reminder",
               `You've only had ${dailyStats.water.current} ${dailyStats.water.unit} of water today. Consider drinking more to reach your goal of ${dailyStats.water.goal} ${dailyStats.water.unit}.`,
@@ -235,60 +238,91 @@ export default function HomeScreen() {
             );
             
             // Save that we've shown the alert today
-            await AsyncStorage.setItem(`water_alert_${today}`, 'true');
+            await setDoc(alertRef, { 
+              shown: true,
+              timestamp: Timestamp.now()
+            });
           }
         }
       }
     };
     
     checkWaterIntake();
-  }, [isLoading, dataLoaded, dailyStats.water.current]);
+  }, [isLoading, dataLoaded, dailyStats.water.current, userId]);
 
-  // Load saved water intake from AsyncStorage
+  // Load saved water intake from Firestore
   const loadWaterIntake = async () => {
-    try {
-      // Get today's date string in YYYY-MM-DD format
-      const today = new Date().toISOString().split('T')[0];
-      const savedWater = await AsyncStorage.getItem(`${WATER_STORAGE_KEY}_${today}`);
-      
-      if (savedWater !== null) {
-        const waterAmount = parseFloat(savedWater);
-        
-        // Update the water intake in the daily stats
-        setDailyStats(prev => ({
-          ...prev,
-          water: {
-            ...prev.water,
-            current: waterAmount
-          }
-        }));
-      }
-    } catch (error) {
-      console.error('Error loading water intake:', error);
-    }
-  };
-
-  // Handle water tracking by updating local storage
-  const addWater = () => {
-    // Get today's date string in YYYY-MM-DD format
-    const today = new Date().toISOString().split('T')[0];
+    if (!userId) return;
     
-    // Update state with new water amount
-    setDailyStats(prev => {
-      const newWaterAmount = Math.min(prev.water.current + 1, prev.water.goal);
+    try {
+      // Get today's date
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
       
-      // Save to AsyncStorage
-      AsyncStorage.setItem(`${WATER_STORAGE_KEY}_${today}`, newWaterAmount.toString())
-        .catch(error => console.error('Error saving water intake:', error));
+      const startTimestamp = Timestamp.fromDate(today);
+      const endTimestamp = Timestamp.fromDate(tomorrow);
       
-      return {
+      // Query water intake documents for today
+      const waterRef = collection(db, "userProfiles", userId, "waterIntake");
+      const waterQuery = query(
+        waterRef,
+        where("timestamp", ">=", startTimestamp),
+        where("timestamp", "<", endTimestamp)
+      );
+      
+      const waterSnap = await getDocs(waterQuery);
+      
+      // Calculate total water intake for today
+      let totalWater = 0;
+      waterSnap.forEach(doc => {
+        const data = doc.data();
+        totalWater += data.amount || 0;
+      });
+      
+      // Update the water intake in the daily stats
+      setDailyStats(prev => ({
         ...prev,
         water: {
           ...prev.water,
-          current: newWaterAmount
+          current: totalWater
         }
-      };
-    });
+      }));
+    } catch (error) {
+      console.error('Error loading water intake from Firestore:', error);
+    }
+  };
+
+  // Handle water tracking by updating Firestore
+  const addWater = async () => {
+    if (!userId) return;
+    
+    try {
+      // Create a reference to the water intake collection
+      const waterRef = collection(db, "userProfiles", userId, "waterIntake");
+      
+      // Add a new water intake document
+      await addDoc(waterRef, {
+        amount: 1, // 1 liter/glass at a time
+        timestamp: Timestamp.now()
+      });
+      
+      // Update the local state
+      setDailyStats(prev => ({
+        ...prev,
+        water: {
+          ...prev.water,
+          current: prev.water.current + 1
+        }
+      }));
+      
+      return true;
+    } catch (error) {
+      console.error("Error adding water intake:", error);
+      Alert.alert("Error", "Failed to update water intake");
+      return false;
+    }
   };
 
   // First load of data
@@ -607,7 +641,9 @@ export default function HomeScreen() {
               <Ionicons name="log-out-outline" size={24} color="white" />
             </TouchableOpacity>
           <TouchableOpacity 
-            // onPress={() => router.push('/profile')}
+            onPress={() => {
+              router.push('/profile');
+            }}
             className="w-10 h-10 bg-gray-300 rounded-full items-center justify-center"
           >
             <Ionicons name="person" size={24} color="#777" />
@@ -731,7 +767,8 @@ export default function HomeScreen() {
           
           <TouchableOpacity 
             className="w-12 h-12 bg-blue-500 rounded-lg items-center justify-center"
-             onPress={addWater}
+               onPress={addWater}
+            // onPress={()=>seedDefaultExerciseDatabase()}
           >
             <Ionicons name="add" size={32} color="white" />
           </TouchableOpacity>

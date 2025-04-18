@@ -180,25 +180,25 @@ export const seedDefaultFoodDatabase = async () => {
           name: "Treadmill Running",
           caloriesPerMinute: 10,
           image: "https://example.com/images/treadmill.jpg",
-          instructions: "Run at a moderate pace on the treadmill."
+          instructions: "Run at a moderate pace on the treadmill. Maintain a steady rhythm, land softly on your feet, and keep your arms relaxed at your sides."
         },
         {
           name: "Cycling",
           caloriesPerMinute: 8,
           image: "https://example.com/images/cycling.jpg",
-          instructions: "Cycle at a moderate resistance level."  
+          instructions: "Cycle at a moderate resistance level. Keep your back straight, engage your core, and maintain a steady cadence."
         },
         {
           name: "Elliptical",
           caloriesPerMinute: 8.5,
           image: "https://example.com/images/elliptical.jpg",
-          instructions: "Use the elliptical machine at a moderate pace."
+          instructions: "Use the elliptical machine at a moderate pace. Maintain an upright posture and move your arms and legs in sync."
         },
         {
           name: "Rowing Machine",
           caloriesPerMinute: 9,
           image: "https://example.com/images/rowing.jpg",
-          instructions: "Row with proper form at a moderate intensity."
+          instructions: "Row with proper form at a moderate intensity. Push with your legs, lean back slightly, then pull the handle toward your chest."
         }
       ];
       
@@ -208,25 +208,25 @@ export const seedDefaultFoodDatabase = async () => {
           name: "Deadlifts",
           caloriesPerMinute: 6,
           image: "https://example.com/images/deadlift.jpg",
-          instructions: "Perform deadlifts with proper form and appropriate weight."
+          instructions: "Perform deadlifts with proper form and appropriate weight. Keep your back straight, hinge at the hips, and lift with your legs."
         },
         {
           name: "Bench Press",
           caloriesPerMinute: 5,
           image: "https://example.com/images/bench_press.jpg",
-          instructions: "Lie on bench and press weight up from chest."
+          instructions: "Lie on the bench and press weight up from your chest. Keep your feet flat, engage your core, and lower the bar with control."
         },
         {
           name: "Squats",
           caloriesPerMinute: 7,
           image: "https://example.com/images/squat.jpg",
-          instructions: "Perform squats with proper form and appropriate weight."
+          instructions: "Perform squats with proper form and appropriate weight. Keep your chest up, back straight, and knees aligned with your toes."
         },
         {
           name: "Overhead Press",
           caloriesPerMinute: 5.5,
           image: "https://example.com/images/overhead_press.jpg",
-          instructions: "Press weight overhead from shoulder height."
+          instructions: "Press weight overhead from shoulder height. Keep your core tight, elbows slightly forward, and avoid arching your back."
         }
       ];
       
@@ -236,49 +236,50 @@ export const seedDefaultFoodDatabase = async () => {
           name: "Push-Ups",
           caloriesPerMinute: 7,
           image: "https://example.com/images/pushup.jpg",
-          instructions: "Perform push-ups with proper form."
+          instructions: "Perform push-ups with proper form. Keep your body in a straight line, lower your chest to the floor, and push back up."
         },
         {
           name: "Squats",
           caloriesPerMinute: 6,
           image: "https://example.com/images/bodyweight_squat.jpg",
-          instructions: "Perform bodyweight squats with proper form."
+          instructions: "Perform bodyweight squats with proper form. Keep your feet shoulder-width apart and lower until your thighs are parallel to the ground."
         },
         {
           name: "Lunges",
           caloriesPerMinute: 6.5,
           image: "https://example.com/images/lunge.jpg",
-          instructions: "Perform lunges with proper form."
+          instructions: "Perform lunges with proper form. Step forward, lower your back knee toward the floor, and push back up to the starting position."
         },
         {
           name: "Plank",
           caloriesPerMinute: 4,
           image: "https://example.com/images/plank.jpg",
-          instructions: "Hold plank position with proper form."
+          instructions: "Hold plank position with proper form. Keep your body in a straight line, elbows under shoulders, and core engaged."
         }
       ];
       
-      // Camera-detected exercises
-      const cameraExercises = [
+      // Aerobic exercises
+      const aerobicExercises = [
         {
           name: "Jumping Jacks",
           caloriesPerMinute: 8,
           image: "https://example.com/images/jumping_jacks.jpg",
-          instructions: "Perform jumping jacks at a moderate pace."
+          instructions: "Perform jumping jacks at a moderate pace. Jump with your feet apart while raising your arms overhead, then return to starting position."
         },
         {
           name: "High Knees",
           caloriesPerMinute: 9,
           image: "https://example.com/images/high_knees.jpg",
-          instructions: "Run in place, bringing knees up to waist height."
+          instructions: "Run in place, bringing knees up to waist height. Keep your back straight and arms moving in rhythm with your legs."
         },
         {
           name: "Burpees",
           caloriesPerMinute: 10,
           image: "https://example.com/images/burpees.jpg",
-          instructions: "Perform burpees with proper form."
+          instructions: "Perform burpees with proper form. Squat down, kick your feet back into a plank, do a push-up, return feet to squat, and jump up."
         }
       ];
+      
       
       // Add exercises to database
       for (const exercise of cardioExercises) {
@@ -293,8 +294,8 @@ export const seedDefaultFoodDatabase = async () => {
         await addExercise('bodyweight', exercise);
       }
       
-      for (const exercise of cameraExercises) {
-        await addExercise('camera_detection', exercise);
+      for (const exercise of aerobicExercises) {
+        await addExercise('aerobic', exercise);
       }
       
       return { success: true };

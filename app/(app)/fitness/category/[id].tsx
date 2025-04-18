@@ -54,7 +54,7 @@ export default function CategoryScreen() {
     'yoga': 'Yoga',
     'hiit': 'HIIT',
     'sports': 'Sports',
-    'camera_detection': 'Camera Exercises'
+    'aerobic': 'Aerobic'
   };
 
   useEffect(() => {
