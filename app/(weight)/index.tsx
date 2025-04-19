@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { ChevronLeft, Info } from 'react-native-feather';
 import Slider from '@react-native-community/slider';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation } from 'expo-router';
 export default function TargetWeightScreen() {
   const navigation = useNavigation();
   const [targetWeight, setTargetWeight] = useState(60);
@@ -11,7 +11,7 @@ export default function TargetWeightScreen() {
   return (
     <View className="flex-1 bg-slate-100">
       {/* Header with back button */}
-      <View className="pt-10 px-6">
+      <View className="pt-10 px-6"> 
         <TouchableOpacity 
           onPress={() => navigation.goBack()}
           className="w-12 h-12 bg-amber-400 rounded-full flex items-center justify-center"

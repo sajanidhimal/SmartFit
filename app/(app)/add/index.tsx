@@ -1,32 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, SafeAreaView, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { auth } from '@/app/firebase';
 import { logCameraDetectedFood } from '@/app/utils/database_service/calorie_intake_functions';
-
-// Placeholder for your food detection API
-const detectFoodFromImage = async (imageUri: string) => {
-  // Simulate API call to food detection service
-  // In real app, this would be an actual API call to a food recognition service
-  await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate request time
-  
-  // Simulate detected food data (in real app, this would come from the API)
-  return {
-    detectedFood: 'Mixed Salad',
-    calories: Math.floor(Math.random() * 300) + 100, // Random calories between 100-400
-    carbs: Math.floor(Math.random() * 20) + 5, // Random carbs between 5-25g
-    protein: Math.floor(Math.random() * 10) + 2, // Random protein between 2-12g
-    fats: Math.floor(Math.random() * 15) + 1, // Random fats between 1-16g
-  };
-};
+import { Link } from 'expo-router';
 
 export default function AddScreen() {
-  const router = useRouter();
+
+  
   const [loading, setLoading] = useState(false);
   const [detectedFood, setDetectedFood] = useState<any>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  
+  const router = useRouter();
   
   const handleImageSelection = async (useCamera: boolean) => {
     try {
@@ -71,12 +59,66 @@ export default function AddScreen() {
     setDetectedFood(null);
     
     try {
-      // Call food detection API
-      const foodData = await detectFoodFromImage(imageUri);
-      setDetectedFood(foodData);
-    } catch (error) {
+      console.log("Analyzing food");
+      
+      // Create form data for the upload
+      const formData = new FormData();
+      
+      // Add image to form data
+      const filename = imageUri.split('/').pop();
+      const fileType = 'image/' + (imageUri.endsWith('.png') ? 'png' : 'jpeg');
+      
+      formData.append('file', {
+        uri: imageUri,
+        name: filename,
+        type: fileType,
+      } as any);
+      
+      // Send to API endpoint
+      const apiUrl = 'http://127.0.0.1:8000/predict/';
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      const data = await response.json();
+      console.log("data", data);
+      
+      if (response.ok) {
+        // Transform API response to match our expected format
+        const foodData = {
+          detectedFood: data.predicted_class,
+          calories: data.nutrition.calories,
+          carbs: data.nutrition.carbohydrates,
+          protein: data.nutrition.protein,
+          fats: data.nutrition.fats
+        };
+        console.log("foodData", foodData);
+        setDetectedFood(foodData);
+      } else {
+        throw new Error(data.detail || 'Failed to analyze food');
+      }
+    } catch (error: any) {
       console.error('Error detecting food:', error);
-      Alert.alert('Error', 'Failed to detect food. Please try again.');
+      
+      // For development/testing: mock response when the API is not available
+      if (error.message && error.message.includes('Network request failed')) {
+        console.log("Using mock data due to network error");
+        const mockData = {
+          detectedFood: 'Pizza',
+          calories: 750,
+          carbs: 90,
+          protein: 30,
+          fats: 30
+        };
+        setDetectedFood(mockData);
+      } else {
+        Alert.alert('Error', 'Failed to detect food. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -98,14 +140,18 @@ export default function AddScreen() {
         date: new Date()
       });
       
-      if (result.success) {
+      if (result && (result.success === true || result.id)) {
         Alert.alert(
           'Success', 
           `${detectedFood.detectedFood} has been added to your food log!`,
-          [{ text: 'OK', onPress: () => router.back() }]
+          [{ 
+            text: 'OK', 
+            onPress: handleNavigateBack
+          }]
         );
       } else {
-        throw new Error(result.error);
+        const errorMsg = result && result.error ? result.error : 'Failed to save food data';
+        throw new Error(errorMsg);
       }
     } catch (error) {
       console.error('Error saving food:', error);
@@ -119,6 +165,25 @@ export default function AddScreen() {
     setSelectedImage(null);
     setDetectedFood(null);
   };
+  
+  // Navigation helpers that handle navigation context availability
+  const handleNavigateBack = () => {
+    resetDetection();
+    router.back();
+  };
+  
+  const renderCameraButton = () => (
+    <Link href="/add/camera" asChild>
+      <TouchableOpacity 
+        className="bg-white p-6 rounded-lg flex-row items-center shadow-sm justify-center mt-4"
+      >
+        <View className="w-12 h-12 bg-green-100 rounded-full items-center justify-center mr-4">
+          <Ionicons name="camera" size={28} color="green" />
+        </View>
+        <Text className="text-lg font-medium">Advanced Camera Mode</Text>
+      </TouchableOpacity>
+    </Link>
+  );
   
   return (
     <SafeAreaView className="flex-1 bg-gray-100">
@@ -156,6 +221,8 @@ export default function AddScreen() {
               </View>
               <Text className="text-lg font-medium">Choose from Gallery</Text>
             </TouchableOpacity>
+            
+            {renderCameraButton()}
           </View>
         ) : (
           // Show detection results when image is selected
@@ -209,8 +276,13 @@ export default function AddScreen() {
                 <TouchableOpacity 
                   className="bg-purple-600 py-3 rounded-lg mt-6 items-center"
                   onPress={saveDetectedFood}
+                  disabled={loading}
                 >
-                  <Text className="text-white font-medium">Save to Food Log</Text>
+                  {loading ? (
+                    <ActivityIndicator color="#ffffff" size="small" />
+                  ) : (
+                    <Text className="text-white font-medium">Save to Food Log</Text>
+                  )}
                 </TouchableOpacity>
               </View>
             ) : (

@@ -2,14 +2,16 @@
 import { Stack } from 'expo-router';
 import { useEffect } from 'react';
 import { useFonts } from 'expo-font';
-import { SplashScreen } from 'expo-router';
+import { SplashScreen, useNavigationContainerRef } from 'expo-router';
+import { AuthProvider } from './context/auth';
 import "../global.css"
-
+import { NavigationContainer } from '@react-navigation/native';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const navigationRef = useNavigationContainerRef();
   const [loaded, error] = useFonts({
     // You can add custom fonts here if needed
   });
@@ -30,11 +32,15 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      {/* Remove initialRouteName from here - it's causing problems */}
-      <Stack.Screen name="index" />
-      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      <Stack.Screen name="(app)" options={{ headerShown: false }} />
-    </Stack>
+    
+      <AuthProvider>
+        <Stack screenOptions={{ headerShown: false }}>
+          {/* Remove initialRouteName from here - it's causing problems */}
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(app)" options={{ headerShown: false }} />
+        </Stack>
+      </AuthProvider>
+    
   );
 }
