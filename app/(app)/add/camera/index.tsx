@@ -110,7 +110,8 @@ export default function CameraScreen() {
       // Send to API endpoint
       try {
         // Match the API URL from requirements
-        const apiUrl = 'http://127.0.0.1:8000/predict/';
+        // const apiUrl = 'http://10.0.2.2:8000/predict/';
+        const apiUrl = 'http://192.168.1.84:8000/predict/';
         
         const response = await fetch(apiUrl, {
           method: 'POST',
@@ -272,7 +273,6 @@ export default function CameraScreen() {
       <SafeAreaView style={styles.container}>
         <ScrollView style={styles.confirmationContainer}>
           <Text style={styles.confirmationTitle}>Confirm Food Detection</Text>
-          
           <View style={styles.imagePreviewContainer}>
             <Image source={{ uri: image! }} style={styles.previewImage} />
           </View>

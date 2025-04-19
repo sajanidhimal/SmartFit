@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, SafeAreaView, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, SafeAreaView, TouchableOpacity, ScrollView, Image, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -75,7 +75,7 @@ export default function AddScreen() {
       } as any);
       
       // Send to API endpoint
-      const apiUrl = 'http://127.0.0.1:8000/predict/';
+      const apiUrl = 'http://192.168.1.84:8000/predict/';
       
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -174,68 +174,66 @@ export default function AddScreen() {
   
   const renderCameraButton = () => (
     <Link href="/add/camera" asChild>
-      <TouchableOpacity 
-        className="bg-white p-6 rounded-lg flex-row items-center shadow-sm justify-center mt-4"
-      >
-        <View className="w-12 h-12 bg-green-100 rounded-full items-center justify-center mr-4">
+      <TouchableOpacity style={styles.cameraButton}>
+        <View style={styles.iconContainer}>
           <Ionicons name="camera" size={28} color="green" />
         </View>
-        <Text className="text-lg font-medium">Advanced Camera Mode</Text>
+        <Text style={styles.buttonText}>Advanced Camera Mode</Text>
       </TouchableOpacity>
     </Link>
   );
   
   return (
-    <SafeAreaView className="flex-1 bg-gray-100">
-      <View className="p-4 flex-row items-center justify-between">
-        <Text className="text-2xl font-bold text-gray-800">Food Detection</Text>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Food Detection</Text>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="close" size={24} color="#777" />
         </TouchableOpacity>
       </View>
       
-      <ScrollView className="flex-1 p-4">
+      <ScrollView style={styles.scrollView}>
         {!selectedImage ? (
           // Show camera/gallery options when no image is selected
-          <View className="space-y-4">
-            <Text className="text-gray-600 text-center mb-6">
+          <View style={styles.optionsContainer}>
+            <Text style={styles.instructionText}>
               Take a photo of your food or choose from gallery to detect nutritional information
             </Text>
             
             <TouchableOpacity 
-              className="bg-white p-6 rounded-lg flex-row items-center shadow-sm justify-center"
+              style={styles.optionButton}
               onPress={() => handleImageSelection(true)}
             >
-              <View className="w-12 h-12 bg-purple-100 rounded-full items-center justify-center mr-4">
+              <View style={[styles.iconContainer, { backgroundColor: '#EBD4F7' }]}>
                 <Ionicons name="camera-outline" size={28} color="purple" />
               </View>
-              <Text className="text-lg font-medium">Take Photo</Text>
+              <Text style={styles.buttonText}>Take Photo</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
-              className="bg-white p-6 rounded-lg flex-row items-center shadow-sm justify-center"
+              style={styles.optionButton}
               onPress={() => handleImageSelection(false)}
             >
-              <View className="w-12 h-12 bg-blue-100 rounded-full items-center justify-center mr-4">
+              <View style={[styles.iconContainer, { backgroundColor: '#D4E5F7' }]}>
                 <Ionicons name="images-outline" size={28} color="blue" />
               </View>
-              <Text className="text-lg font-medium">Choose from Gallery</Text>
+              <Text style={styles.buttonText}>Choose from Gallery</Text>
             </TouchableOpacity>
             
             {renderCameraButton()}
           </View>
         ) : (
           // Show detection results when image is selected
-          <View className="space-y-6">
-            <View className="items-center">
+          <View style={styles.resultContainer}>
+            <View style={styles.imageContainer}>
               <Image 
                 source={{ uri: selectedImage }}
-                className="w-full h-64 rounded-lg"
+                style={styles.selectedImage}
                 resizeMode="cover"
               />
               
               <TouchableOpacity 
-                className="absolute top-2 right-2 bg-gray-800 bg-opacity-70 p-2 rounded-full"
+                style={styles.closeButton}
                 onPress={resetDetection}
               >
                 <Ionicons name="close" size={20} color="white" />
@@ -243,56 +241,56 @@ export default function AddScreen() {
             </View>
             
             {loading ? (
-              <View className="items-center py-8">
+              <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color="#8A2BE2" />
-                <Text className="mt-4 text-gray-600">Analyzing your food...</Text>
+                <Text style={styles.loadingText}>Analyzing your food...</Text>
               </View>
             ) : detectedFood ? (
-              <View className="bg-white rounded-lg p-5 shadow-sm">
-                <Text className="text-xl font-bold mb-4">{detectedFood.detectedFood}</Text>
+              <View style={styles.detectionCard}>
+                <Text style={styles.foodTitle}>{detectedFood.detectedFood}</Text>
                 
-                <View className="space-y-3">
-                  <View className="flex-row justify-between">
-                    <Text className="text-gray-600">Calories</Text>
-                    <Text className="font-medium">{detectedFood.calories} kcal</Text>
+                <View style={styles.nutritionContainer}>
+                  <View style={styles.nutritionRow}>
+                    <Text style={styles.nutritionLabel}>Calories</Text>
+                    <Text style={styles.nutritionValue}>{detectedFood.calories} kcal</Text>
                   </View>
                   
-                  <View className="flex-row justify-between">
-                    <Text className="text-gray-600">Carbs</Text>
-                    <Text className="font-medium">{detectedFood.carbs}g</Text>
+                  <View style={styles.nutritionRow}>
+                    <Text style={styles.nutritionLabel}>Carbs</Text>
+                    <Text style={styles.nutritionValue}>{detectedFood.carbs}g</Text>
                   </View>
                   
-                  <View className="flex-row justify-between">
-                    <Text className="text-gray-600">Protein</Text>
-                    <Text className="font-medium">{detectedFood.protein}g</Text>
+                  <View style={styles.nutritionRow}>
+                    <Text style={styles.nutritionLabel}>Protein</Text>
+                    <Text style={styles.nutritionValue}>{detectedFood.protein}g</Text>
                   </View>
                   
-                  <View className="flex-row justify-between">
-                    <Text className="text-gray-600">Fats</Text>
-                    <Text className="font-medium">{detectedFood.fats}g</Text>
+                  <View style={styles.nutritionRow}>
+                    <Text style={styles.nutritionLabel}>Fats</Text>
+                    <Text style={styles.nutritionValue}>{detectedFood.fats}g</Text>
                   </View>
                 </View>
                 
                 <TouchableOpacity 
-                  className="bg-purple-600 py-3 rounded-lg mt-6 items-center"
+                  style={styles.saveButton}
                   onPress={saveDetectedFood}
                   disabled={loading}
                 >
                   {loading ? (
                     <ActivityIndicator color="#ffffff" size="small" />
                   ) : (
-                    <Text className="text-white font-medium">Save to Food Log</Text>
+                    <Text style={styles.saveButtonText}>Save to Food Log</Text>
                   )}
                 </TouchableOpacity>
               </View>
             ) : (
-              <View className="items-center py-8">
-                <Text className="text-gray-600">Failed to detect food. Please try again.</Text>
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>Failed to detect food. Please try again.</Text>
                 <TouchableOpacity 
-                  className="mt-4 bg-purple-100 p-3 rounded-lg"
+                  style={styles.retryButton}
                   onPress={() => processImage(selectedImage)}
                 >
-                  <Text className="text-purple-700">Try Again</Text>
+                  <Text style={styles.retryButtonText}>Try Again</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -302,3 +300,164 @@ export default function AddScreen() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F5F5',
+  },
+  header: {
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  scrollView: {
+    flex: 1,
+    padding: 16,
+  },
+  optionsContainer: {
+    gap: 16,
+  },
+  instructionText: {
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+    fontSize: 16,
+  },
+  optionButton: {
+    backgroundColor: 'white',
+    padding: 24,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  cameraButton: {
+    backgroundColor: 'white',
+    padding: 24,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+    justifyContent: 'center',
+    marginTop: 16,
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#D8F5E6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+  },
+  buttonText: {
+    fontSize: 18,
+    fontWeight: '500',
+  },
+  resultContainer: {
+    gap: 24,
+  },
+  imageContainer: {
+    alignItems: 'center',
+    position: 'relative',
+  },
+  selectedImage: {
+    width: '100%',
+    height: 256,
+    borderRadius: 12,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 8,
+    borderRadius: 20,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  loadingText: {
+    marginTop: 16,
+    color: '#666',
+    fontSize: 16,
+  },
+  detectionCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  foodTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  nutritionContainer: {
+    gap: 12,
+  },
+  nutritionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  nutritionLabel: {
+    color: '#666',
+    fontSize: 16,
+  },
+  nutritionValue: {
+    fontWeight: '500',
+    fontSize: 16,
+  },
+  saveButton: {
+    backgroundColor: '#8A2BE2',
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  saveButtonText: {
+    color: 'white',
+    fontWeight: '500',
+    fontSize: 16,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  errorText: {
+    color: '#666',
+    fontSize: 16,
+  },
+  retryButton: {
+    marginTop: 16,
+    backgroundColor: '#F0E6FF',
+    padding: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#8A2BE2',
+    fontWeight: '500',
+  }
+});
