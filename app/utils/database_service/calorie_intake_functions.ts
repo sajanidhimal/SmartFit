@@ -72,7 +72,11 @@ const safelyHandleDate = (dateValue: any) => {
   return serverTimestamp();
 };
 
-export const logFoodIntake = async (userId: string, intakeData: IntakeData): Promise<Result> => {
+export const logFoodIntake = async (
+  userId: string, 
+  intakeData: IntakeData,
+  onSuccess?: () => void
+): Promise<Result> => {
   try {
     const intakeRef = collection(db, 'userProfiles', userId, 'calorieIntake');
     
@@ -88,6 +92,11 @@ export const logFoodIntake = async (userId: string, intakeData: IntakeData): Pro
       image: intakeData.image || null,
       date: safelyHandleDate(intakeData.date)
     });
+    
+    // Call the success callback if provided
+    if (onSuccess) {
+      onSuccess();
+    }
     
     return { success: true, id: docRef.id };
   } catch (error: any) {
@@ -140,7 +149,8 @@ export const deleteFoodIntake = async (
 
 export const logCameraDetectedFood = async (
   userId: string,
-  foodData: FoodData
+  foodData: FoodData,
+  onSuccess?: () => void
 ): Promise<Result> => {
   try {
     const intakeRef = collection(db, 'userProfiles', userId, 'calorieIntake');
@@ -156,6 +166,11 @@ export const logCameraDetectedFood = async (
       fats: parseFloat(String(foodData.fats)),
       date: safelyHandleDate(foodData.date)
     });
+    
+    // Call the success callback if provided
+    if (onSuccess) {
+      onSuccess();
+    }
     
     return { success: true, id: docRef.id };
   } catch (error: any) {

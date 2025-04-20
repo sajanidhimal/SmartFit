@@ -39,8 +39,15 @@ export default function IndexScreen() {
         // Give the animation time to complete before deciding next step
         setTimeout(() => {
           if (user) {
-            // User is signed in, check if they have a profile
-            checkUserProfile(user.uid);
+            // Check if email is verified first
+            if (!user.emailVerified) {
+              // Email not verified, redirect to verification screen
+              console.log("Email not verified, going to verification screen");
+              router.replace('/(auth)/verify-email');
+            } else {
+              // Email is verified, check if they have a profile
+              checkUserProfile(user.uid);
+            }
           } else {
             // No user is signed in, go to login
             router.replace('/(auth)/login');

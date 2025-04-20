@@ -1,7 +1,7 @@
 // app/(auth)/signup.tsx
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Image, Alert } from 'react-native';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
 import { useRouter } from 'expo-router';
 import { auth } from '../firebase'; 
 import { Feather } from '@expo/vector-icons';
@@ -31,9 +31,25 @@ export default function SignUpScreen() {
     
     setLoading(true);
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      // After signup, show feature screens before onboarding
-      setShowFeatureScreens(true);
+      // Create the user account
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // Send verification email
+      await sendEmailVerification(userCredential.user);
+      
+      Alert.alert(
+        'Verification Email Sent',
+        'Please check your email and verify your account before continuing.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // After signup and sending verification email, show feature screens
+              setShowFeatureScreens(true);
+            }
+          }
+        ]
+      );
     } catch (error:any) {
       Alert.alert('Sign Up Failed', error.message);
       setLoading(false);
@@ -41,8 +57,8 @@ export default function SignUpScreen() {
   };
 
   const handleFeatureScreensComplete = () => {
-    // Feature screens are done, go to onboarding
-    router.replace('/(auth)/onboarding');
+    // Feature screens are done, redirect to verification screen
+    router.replace('/(auth)/verify-email');
   };
 
   // Show feature screens if needed

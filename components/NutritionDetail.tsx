@@ -41,7 +41,6 @@ interface FoodItem {
 export default function NutritionTracker({ userId, selectedDate, onDataUpdate }: NutritionTrackerProps) {
   const [selectedPeriod, setSelectedPeriod] = useState<'Daily' | 'Weekly' | 'Monthly' | 'Yearly'>('Daily');
   const [isLoading, setIsLoading] = useState(true);
-  const [lastUpdateSent, setLastUpdateSent] = useState<number | null>(null);
   const [userGoals, setUserGoals] = useState({
     calories: 2000,
     protein: 150,
@@ -103,11 +102,19 @@ export default function NutritionTracker({ userId, selectedDate, onDataUpdate }:
     loadUserGoals();
   }, [userId]);
 
+  // Force reload when the selectedDate changes
   useEffect(() => {
     if (userId) {
       loadNutritionData(selectedPeriod);
     }
-  }, [userId, selectedDate, selectedPeriod, userGoals]);
+  }, [userId, selectedDate]);
+
+  // Force reload when the selected period or user goals change
+  useEffect(() => {
+    if (userId) {
+      loadNutritionData(selectedPeriod);
+    }
+  }, [selectedPeriod, userGoals]);
 
   const loadNutritionData = async (period: 'Daily' | 'Weekly' | 'Monthly' | 'Yearly') => {
     setIsLoading(true);
@@ -166,16 +173,16 @@ export default function NutritionTracker({ userId, selectedDate, onDataUpdate }:
       setCarbsProgress(processedData.carbsProgress);
       setFatProgress(processedData.fatProgress);
       
-      // Notify parent component that data has been updated - limit to once every 5 seconds
-      const now = Date.now();
-      if (onDataUpdate && (!lastUpdateSent || now - lastUpdateSent > 5000)) {
-        onDataUpdate();
-        setLastUpdateSent(now);
-      }
     } catch (error) {
       console.error("Error loading nutrition data:", error);
     } finally {
       setIsLoading(false);
+      
+      // Notify parent component that data has been updated after loading completes
+      if (onDataUpdate) {
+        console.log("Notifying parent component of nutrition data update");
+        onDataUpdate();
+      }
     }
   };
 

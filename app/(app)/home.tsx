@@ -1,5 +1,5 @@
 //home.tsx
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, createContext, useContext } from 'react';
 import { View, Text, ScrollView, SafeAreaView, TouchableOpacity, Alert, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -10,7 +10,6 @@ import NutritionTracker from '../../components/NutritionDetail';
 import { useFocusEffect } from 'expo-router';
 import { signOut } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
 
 // Import your Firebase functions
 import { 
@@ -66,6 +65,15 @@ interface DailyStats {
   };
 }
 
+// Create a context to track when food is added
+interface NutritionContextType {
+  notifyFoodAdded: () => void;
+}
+
+export const NutritionContext = createContext<NutritionContextType>({
+  notifyFoodAdded: () => {},
+});
+
 export default function HomeScreen() {
   const router = useRouter();
   const [userId, setUserId] = useState<string | null>(null);
@@ -98,6 +106,12 @@ export default function HomeScreen() {
   const [selectedPeriod, setSelectedPeriod] = useState('Daily');
   const [weekDays, setWeekDays] = useState<Array<{day: string, date: number, active: boolean, fullDate: Date}>>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+
+  // Helper to force NutritionTracker to reload when data changes
+  const [nutritionKey, setNutritionKey] = useState(0);
+
+  // Add a state to track if food was added
+  const [foodAdded, setFoodAdded] = useState(false);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -411,13 +425,17 @@ export default function HomeScreen() {
     React.useCallback(() => {
       let isActive = true;
       
-      // Skip during initial load to prevent duplicate loading
-      if (dataLoaded && userId && !isLoading) {
-        console.log('Home screen focused, reloading data...');
+      // Only refresh data when the screen gets focus after initial load
+      if (userId && !isLoading) {
+        console.log('Screen in focus, reloading nutrition data...');
         
         const refreshData = async () => {
           try {
             await loadDailyData(selectedDate);
+            // Also refresh water intake when returning to the screen
+            if (userId) {
+              loadWaterIntake();
+            }
           } catch (error) {
             console.error("Error in focus effect refresh:", error);
           }
@@ -433,7 +451,7 @@ export default function HomeScreen() {
         // Mark as inactive when the screen loses focus
         isActive = false;
       };
-    }, [userId, selectedDate, dataLoaded, isLoading])
+    }, [userId, selectedDate, isLoading])
   );
 
   // Load daily nutrition and exercise data
@@ -526,6 +544,9 @@ export default function HomeScreen() {
         };
       });
       
+      // Force NutritionTracker to re-render with new data
+      setNutritionKey(prevKey => prevKey + 1);
+      
     } catch (error) {
       console.error("Error loading daily data:", error);
     } finally {
@@ -597,9 +618,23 @@ export default function HomeScreen() {
   };
 
   // Make the NutritionTracker share data with parent component
-  const handleNutritionDataUpdate = () => {
+  const handleNutritionDataUpdate = useCallback(() => {
     // Reload data when child component indicates data has changed
+    console.log("Nutrition data updated, refreshing home screen data");
     loadDailyData(selectedDate);
+    // Also mark food as added to ensure data is refreshed
+    setFoodAdded(true);
+  }, [selectedDate]);
+  
+  // Function to notify that food was added, can be called from other components
+  const notifyFoodAdded = useCallback(() => {
+    console.log("Food added notification received");
+    setFoodAdded(true);
+  }, []);
+  
+  // Create the context value
+  const nutritionContextValue = {
+    notifyFoodAdded
   };
 
   if (isLoading) {
@@ -611,196 +646,199 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      <ScrollView 
-        className="flex-1"
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        <View className="flex-row justify-between items-center px-5 py-4">
-          <View>
-            <Text className="text-2xl font-bold text-gray-800">
-              Hello, {userProfile?.name || 'Fitness Enthusiast'}
-            </Text>
-            <Text className="text-gray-500">Let's check your progress</Text>
-          </View>
-          
-          <View className="flex-row">
-            {/* add profile icon */}
-            <TouchableOpacity 
-              className="w-10 h-10 rounded-full bg-white shadow-sm mr-2 items-center justify-center"
-              onPress={() => router.push('/profile')}
-            >
-              <Ionicons name="person-outline" size={20} color="#8A2BE2" />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              className="w-10 h-10 rounded-full bg-white shadow-sm mr-2 items-center justify-center"
-              onPress={() => router.push('/chat')}
-            >
-              <Ionicons name="chatbubbles" size={20} color="#8A2BE2" />
-            </TouchableOpacity>
+    <NutritionContext.Provider value={nutritionContextValue}>
+      <SafeAreaView className="flex-1 bg-gray-50">
+        <ScrollView 
+          className="flex-1"
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          <View className="flex-row justify-between items-center px-5 py-4">
+            <View>
+              <Text className="text-2xl font-bold text-gray-800">
+                Hello, {userProfile?.name || 'Fitness Enthusiast'}
+              </Text>
+              <Text className="text-gray-500">Let's check your progress</Text>
+            </View>
             
-            <TouchableOpacity 
-              className="w-10 h-10 rounded-full bg-white shadow-sm items-center justify-center"
-              onPress={handleLogout}
-            >
-              <Ionicons name="log-out-outline" size={20} color="#FF4500" />
-            </TouchableOpacity>
+            <View className="flex-row">
+              {/* add profile icon */}
+              <TouchableOpacity 
+                className="w-10 h-10 rounded-full bg-white shadow-sm mr-2 items-center justify-center"
+                onPress={() => router.push('/profile')}
+              >
+                <Ionicons name="person-outline" size={20} color="#8A2BE2" />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                className="w-10 h-10 rounded-full bg-white shadow-sm mr-2 items-center justify-center"
+                onPress={() => router.push('/chat')}
+              >
+                <Ionicons name="chatbubbles" size={20} color="#8A2BE2" />
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                className="w-10 h-10 rounded-full bg-white shadow-sm items-center justify-center"
+                onPress={handleLogout}
+              >
+                <Ionicons name="log-out-outline" size={20} color="#FF4500" />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
 
-        {/* Main Card */}
-        <View className="bg-white rounded-2xl px-4 py-2 shadow flex items-center mb-2">
-          {/* Calorie Progress */}
-          <View className="flex-row justify-between mb-6 items-end flex mb-2 gap-16">
-            <View className="flex-1 items-center">
-              <CircularProgress
-                size={150}
-                strokeWidth={12}
-                progress={dailyStats.calories.eaten}
-                max={dailyStats.calories.total}
-                value={dailyStats.calories.total}
-                unit="kcal"
-                color="#f8a100"
+          {/* Main Card */}
+          <View className="bg-white rounded-2xl px-4 py-2 shadow flex items-center mb-2">
+            {/* Calorie Progress */}
+            <View className="flex-row justify-between mb-6 items-end flex mb-2 gap-16">
+              <View className="flex-1 items-center">
+                <CircularProgress
+                  size={150}
+                  strokeWidth={12}
+                  progress={dailyStats.calories.eaten}
+                  max={dailyStats.calories.total}
+                  value={dailyStats.calories.total}
+                  unit="kcal"
+                  color="#f8a100"
+                />
+              </View>
+              <TouchableOpacity 
+    className="flex-1 justify-center space-y-4"
+    onPress={() => router.push('/(food)')}
+  >
+              <View  className="flex-1 justify-center space-y-4">
+                <View>
+                  <Text className="text-gray-500">Eaten</Text>
+                  <Text className="text-xl">
+                    {dailyStats.calories.eaten} <Text className="text-gray-400 text-sm">kcal</Text>
+                  </Text>
+                </View>
+                
+                <View>
+                  <Text className="text-gray-500">Remaining</Text>
+                  <Text className="text-xl">
+                    {dailyStats.calories.remaining} <Text className="text-gray-400 text-sm">kcal</Text>
+                  </Text>
+                </View>
+                
+                <View>
+                  <Text className="text-gray-500">Burned</Text>
+                  <Text className="text-xl">
+                    {dailyStats.calories.burned} <Text className="text-gray-400 text-sm">kcal</Text>
+                  </Text>
+                </View>
+              </View>
+              </TouchableOpacity 
+              >
+            </View>
+
+            {/* Macro Nutrients */}
+            <View className="flex-row space-x-4 flex gap-2">
+              <MacroCard 
+                title="Protein"
+                current={dailyStats.macros.protein.current}
+                goal={dailyStats.macros.protein.goal}
+                unit="g"
+                bgColor="bg-protein-bg"
+                progressColor="#d46b08"
+                textColor="text-protein-text"
+              />
+              <MacroCard 
+                title="Fats"
+                current={dailyStats.macros.fats.current}
+                goal={dailyStats.macros.fats.goal}
+                unit="g"
+                bgColor="bg-fats-bg"
+                progressColor="#b94700"
+                textColor="text-fats-text"
+              />
+              
+              <MacroCard 
+                title="Carbs"
+                current={dailyStats.macros.carbs.current}
+                goal={dailyStats.macros.carbs.goal}
+                unit="g"
+                bgColor="bg-carbs-bg"
+                progressColor="#b97a00"
+                textColor="text-carbs-text"
               />
             </View>
-            <TouchableOpacity 
-  className="flex-1 justify-center space-y-4"
-  onPress={() => router.push('/(food)')}
->
-            <View  className="flex-1 justify-center space-y-4">
-              <View>
-                <Text className="text-gray-500">Eaten</Text>
-                <Text className="text-xl">
-                  {dailyStats.calories.eaten} <Text className="text-gray-400 text-sm">kcal</Text>
-                </Text>
-              </View>
-              
-              <View>
-                <Text className="text-gray-500">Remaining</Text>
-                <Text className="text-xl">
-                  {dailyStats.calories.remaining} <Text className="text-gray-400 text-sm">kcal</Text>
-                </Text>
-              </View>
-              
-              <View>
-                <Text className="text-gray-500">Burned</Text>
-                <Text className="text-xl">
-                  {dailyStats.calories.burned} <Text className="text-gray-400 text-sm">kcal</Text>
-                </Text>
-              </View>
+          </View>
+
+          {/* Week Calendar */}
+          <WeekCalendar 
+            weekDays={weekDays}
+            onPrevWeek={handlePrevWeek}
+            onNextWeek={handleNextWeek}
+            onSelectDay={selectDay}
+          />
+
+          {/* Water Balance */}
+          <View className="bg-white rounded-lg p-4 flex-row items-center justify-between shadow mb-4 w-full">
+            <View className="w-16 h-24 relative">
+              {/* Glass outline */}
+              <View className="absolute inset-0 bg-blue-100 rounded-t-lg rounded-b-3xl border-2 border-blue-300" />
+              {/* Water fill */}
+              <View 
+                className="absolute bottom-0 left-0 right-0 bg-blue-400 rounded-b-3xl"
+                style={{ 
+                  height: `${(dailyStats.water.current / dailyStats.water.goal) * 100}%`,
+                  borderTopLeftRadius: 4,
+                  borderTopRightRadius: 4
+                }}
+              />
+              {/* Glass shine effect */}
+              <View className="absolute top-1 right-2 w-2 h-12 bg-white/20 rounded-full" />
             </View>
-            </TouchableOpacity 
-            >
-          </View>
-
-          {/* Macro Nutrients */}
-          <View className="flex-row space-x-4 flex gap-2">
-            <MacroCard 
-              title="Protein"
-              current={dailyStats.macros.protein.current}
-              goal={dailyStats.macros.protein.goal}
-              unit="g"
-              bgColor="bg-protein-bg"
-              progressColor="#d46b08"
-              textColor="text-protein-text"
-            />
-            <MacroCard 
-              title="Fats"
-              current={dailyStats.macros.fats.current}
-              goal={dailyStats.macros.fats.goal}
-              unit="g"
-              bgColor="bg-fats-bg"
-              progressColor="#b94700"
-              textColor="text-fats-text"
-            />
             
-            <MacroCard 
-              title="Carbs"
-              current={dailyStats.macros.carbs.current}
-              goal={dailyStats.macros.carbs.goal}
-              unit="g"
-              bgColor="bg-carbs-bg"
-              progressColor="#b97a00"
-              textColor="text-carbs-text"
-            />
-          </View>
-        </View>
-
-        {/* Week Calendar */}
-        <WeekCalendar 
-          weekDays={weekDays}
-          onPrevWeek={handlePrevWeek}
-          onNextWeek={handleNextWeek}
-          onSelectDay={selectDay}
-        />
-
-        {/* Water Balance */}
-        <View className="bg-white rounded-lg p-4 flex-row items-center justify-between shadow mb-4 w-full">
-          <View className="w-16 h-24 relative">
-            {/* Glass outline */}
-            <View className="absolute inset-0 bg-blue-100 rounded-t-lg rounded-b-3xl border-2 border-blue-300" />
-            {/* Water fill */}
-            <View 
-              className="absolute bottom-0 left-0 right-0 bg-blue-400 rounded-b-3xl"
-              style={{ 
-                height: `${(dailyStats.water.current / dailyStats.water.goal) * 100}%`,
-                borderTopLeftRadius: 4,
-                borderTopRightRadius: 4
-              }}
-            />
-            {/* Glass shine effect */}
-            <View className="absolute top-1 right-2 w-2 h-12 bg-white/20 rounded-full" />
-          </View>
-          
-          <View className="flex-1 px-4">
-            <Text className="text-lg font-medium text-gray-700">Water Balance</Text>
-            <Text className="text-2xl font-bold text-gray-900">
-              {dailyStats.water.current} {dailyStats.water.unit}
-            </Text>
-            <Text className="text-gray-500">
-              {dailyStats.water.goal - dailyStats.water.current} Left
-            </Text>
-          </View>
-          
-          <TouchableOpacity 
-            className="w-12 h-12 bg-blue-500 rounded-lg items-center justify-center"
-               onPress={addWater}
-            // onPress={()=>seedDefaultExerciseDatabase()}
-          >
-            <Ionicons name="add" size={32} color="white" />
-          </TouchableOpacity>
-        </View>
-       
-        <NutritionTracker 
-          userId={userId!} 
-          selectedDate={selectedDate} 
-          onDataUpdate={handleNutritionDataUpdate}
-        />
-
-        {/* Daily Summary */}
-        <View className="mt-4 p-4 bg-white rounded-lg shadow-sm">
-          <Text className="text-lg font-bold text-gray-800 mb-4">Quick Access</Text>
-          <View className="flex-row justify-between mb-2">
-            <TouchableOpacity 
-              onPress={() => router.push('/fitness')}
-              className="bg-primary/10 rounded-lg p-4 items-center w-[48%]"
-            >
-              <Ionicons name="barbell" size={24} color="#8A2BE2" />
-              <Text className="font-medium text-gray-700 mt-2">Workouts</Text>
-            </TouchableOpacity>
+            <View className="flex-1 px-4">
+              <Text className="text-lg font-medium text-gray-700">Water Balance</Text>
+              <Text className="text-2xl font-bold text-gray-900">
+                {dailyStats.water.current} {dailyStats.water.unit}
+              </Text>
+              <Text className="text-gray-500">
+                {dailyStats.water.goal - dailyStats.water.current} Left
+              </Text>
+            </View>
             
             <TouchableOpacity 
-              onPress={() => router.push('/chat')}
-              className="bg-primary/10 rounded-lg p-4 items-center w-[48%]"
+              className="w-12 h-12 bg-blue-500 rounded-lg items-center justify-center"
+                 onPress={addWater}
+              // onPress={()=>seedDefaultExerciseDatabase()}
             >
-              <Ionicons name="chatbubbles" size={24} color="#8A2BE2" />
-              <Text className="font-medium text-gray-700 mt-2">AI Coach</Text>
+              <Ionicons name="add" size={32} color="white" />
             </TouchableOpacity>
           </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+         
+          <NutritionTracker 
+            userId={userId!} 
+            selectedDate={selectedDate}
+            onDataUpdate={handleNutritionDataUpdate}
+            key={nutritionKey}
+          />
+
+          {/* Daily Summary */}
+          <View className="mt-4 p-4 bg-white rounded-lg shadow-sm">
+            <Text className="text-lg font-bold text-gray-800 mb-4">Quick Access</Text>
+            <View className="flex-row justify-between mb-2">
+              <TouchableOpacity 
+                onPress={() => router.push('/fitness')}
+                className="bg-primary/10 rounded-lg p-4 items-center w-[48%]"
+              >
+                <Ionicons name="barbell" size={24} color="#8A2BE2" />
+                <Text className="font-medium text-gray-700 mt-2">Workouts</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                onPress={() => router.push('/chat')}
+                className="bg-primary/10 rounded-lg p-4 items-center w-[48%]"
+              >
+                <Ionicons name="chatbubbles" size={24} color="#8A2BE2" />
+                <Text className="font-medium text-gray-700 mt-2">AI Coach</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </NutritionContext.Provider>
   );
 }

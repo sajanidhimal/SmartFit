@@ -28,7 +28,25 @@ export default function LoginScreen() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
-      // Check if user has a profile
+      // Check if email is verified
+      if (!user.emailVerified) {
+        // Email not verified, redirect to verification screen
+        Alert.alert(
+          'Email Not Verified',
+          'Please verify your email address before continuing.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                router.replace('/(auth)/verify-email');
+              }
+            }
+          ]
+        );
+        return;
+      }
+      
+      // Email is verified, check if user has a profile
       const userRef = doc(db, "userProfiles", user.uid);
       const userSnap = await getDoc(userRef);
       

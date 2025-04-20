@@ -75,7 +75,7 @@ export default function AddScreen() {
       } as any);
       
       // Send to API endpoint
-      const apiUrl = 'http://192.168.1.84:8000/predict/';
+      const apiUrl = 'http://localhost:8000/predict/';
       
       const response = await fetch(apiUrl, {
         method: 'POST',
