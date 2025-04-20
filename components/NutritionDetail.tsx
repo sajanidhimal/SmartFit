@@ -469,7 +469,7 @@ export default function NutritionTracker({ userId, selectedDate, onDataUpdate }:
   };
 
   return (
-    <View>
+    <View style={{ paddingHorizontal: 16, marginBottom: 70 }}>
       <NutritionSection 
         title="Calories" 
         stats={calorieStats} 

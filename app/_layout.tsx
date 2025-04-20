@@ -4,6 +4,8 @@ import { useEffect } from 'react';
 import { useFonts } from 'expo-font';
 import { SplashScreen, useNavigationContainerRef } from 'expo-router';
 import { AuthProvider } from './context/auth';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import "../global.css"
 
 // Prevent the splash screen from auto-hiding before asset loading is complete
@@ -31,13 +33,16 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <Stack screenOptions={{ headerShown: false }}>
-        {/* Remove initialRouteName from here - it's causing problems */}
-        <Stack.Screen name="index" />
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(app)" options={{ headerShown: false }} />
-      </Stack>
-    </AuthProvider>
+    <SafeAreaProvider>
+      <StatusBar style="dark" />
+      <AuthProvider>
+        <Stack screenOptions={{ headerShown: false }}>
+          {/* Remove initialRouteName from here - it's causing problems */}
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          <Stack.Screen name="(app)" options={{ headerShown: false }} />
+        </Stack>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }

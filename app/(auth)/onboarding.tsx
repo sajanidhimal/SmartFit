@@ -188,199 +188,229 @@ export default function OnboardingScreen() {
           </View>
         );
         
-      case 2:
-        return (
-          <View className="flex-1 justify-center p-6 bg-gray-100">
-            <View className="bg-white rounded-xl p-6">
-              <Text className="text-xl font-bold mb-2">What's your height?</Text>
-              <Text className="text-gray-500 mb-6">This is used in making personalized results and plan for you.</Text>
-              
-              <View className="items-center mb-8">
-                <View className="flex-row">
-                  {/* Feet Selector */}
-                  <View className="w-1/3 items-center">
-                    <ScrollView
-                      showsVerticalScrollIndicator={false}
-                      contentContainerStyle={{ paddingVertical: 60 }}
-                      style={{ height: 180 }}
-                      onMomentumScrollEnd={(event) => {
-                        const feet = ["3", "4", "5", "6", "7"];
-                        handleScroll(event, handleFeetChange, feet);
-                      }}
-                    >
+        case 2:
+          return (
+            <View className="flex-1 justify-center p-6 bg-gray-100">
+              <View className="bg-white rounded-xl p-6">
+                <Text className="text-xl font-bold mb-2">What's your height?</Text>
+                <Text className="text-gray-500 mb-6">This is used in making personalized results and plan for you.</Text>
+                
+                <View className="mb-8">
+                  {/* Feet selector */}
+                  <View className="mb-6">
+                    <Text className="text-sm text-gray-500 mb-2">Feet</Text>
+                    <View className="flex-row flex-wrap justify-between">
                       {["3", "4", "5", "6", "7"].map((ft) => (
                         <TouchableOpacity
                           key={`ft-${ft}`}
                           onPress={() => handleFeetChange(ft)}
-                          style={{ height: 60, justifyContent: 'center' }}
+                          className={`w-16 h-12 mb-2 rounded-lg items-center justify-center ${heightFeet === ft ? 'bg-orange-400' : 'bg-gray-200'}`}
                         >
-                          <Text 
-                            className={`text-xl ${heightFeet === ft ? 'text-orange-500 font-bold' : 'text-gray-400'}`}
-                          >
-                            {ft}
+                          <Text className={`text-lg ${heightFeet === ft ? 'text-white font-bold' : 'text-gray-700'}`}>
+                            {ft}'
                           </Text>
                         </TouchableOpacity>
                       ))}
-                    </ScrollView>
-                    <View 
-                      className="absolute top-1/2 h-[60px] w-full border-t border-b border-gray-200"
-                      style={{ transform: [{ translateY: -30 }] }}
-                    />
+                    </View>
                   </View>
                   
-                  {/* Dot Separator */}
-                  <View className="w-1/6 items-center justify-center">
-                    <Text className="text-gray-400 text-2xl">.</Text>
-                  </View>
-                  
-                  {/* Inches Selector */}
-                  <View className="w-1/3 items-center">
-                    <ScrollView
-                      showsVerticalScrollIndicator={false}
-                      contentContainerStyle={{ paddingVertical: 60 }}
-                      style={{ height: 180 }}
-                      onMomentumScrollEnd={(event) => {
-                        const inches = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"];
-                        handleScroll(event, handleInchesChange, inches);
-                      }}
-                    >
-                      {["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"].map((inch) => (
+                  {/* Inches selector */}
+                  <View>
+                    <Text className="text-sm text-gray-500 mb-2">Inches</Text>
+                    <View className="flex-row flex-wrap justify-between">
+                      {Array.from({ length: 12 }, (_, i) => i.toString()).map((inch) => (
                         <TouchableOpacity
                           key={`in-${inch}`}
                           onPress={() => handleInchesChange(inch)}
-                          style={{ height: 60, justifyContent: 'center' }}
+                          className={`w-16 h-12 mb-2 rounded-lg items-center justify-center ${heightInches === inch ? 'bg-orange-400' : 'bg-gray-200'}`}
                         >
-                          <Text 
-                            className={`text-xl ${heightInches === inch ? 'text-orange-500 font-bold' : 'text-gray-400'}`}
-                          >
-                            {inch}
+                          <Text className={`text-lg ${heightInches === inch ? 'text-white font-bold' : 'text-gray-700'}`}>
+                            {inch}"
                           </Text>
                         </TouchableOpacity>
                       ))}
-                    </ScrollView>
-                    <View 
-                      className="absolute top-1/2 h-[60px] w-full border-t border-b border-gray-200"
-                      style={{ transform: [{ translateY: -30 }] }}
-                    />
+                    </View>
                   </View>
                   
-                  {/* Unit */}
-                  <View className="w-1/6 items-center justify-center">
-                    <Text className="text-orange-500 text-lg">ft</Text>
+                  {/* Display selected height */}
+                  <View className="mt-6 p-4 bg-gray-100 rounded-lg items-center">
+                    <Text className="text-gray-600">Selected Height:</Text>
+                    <Text className="text-xl font-bold text-orange-500">
+                      {heightFeet}' {heightInches || 0}" ({heightCm || feetInchesToCm(heightFeet, heightInches || "0")} cm)
+                    </Text>
                   </View>
                 </View>
               </View>
-            </View>
-            
-            <TouchableOpacity 
-              onPress={nextStep}
-              className="bg-orange-400 p-4 rounded-lg items-center mt-6"
-              disabled={!heightFeet}
-            >
-              <Text className="text-white font-semibold">Next</Text>
-            </TouchableOpacity>
-          </View>
-        );
-        
-      case 3:
-        return (
-          <View className="flex-1 justify-center p-6 bg-gray-100">
-            <View className="bg-white rounded-xl p-6">
-              <Text className="text-xl font-bold mb-2">What's your Weight (in Kg)?</Text>
-              <Text className="text-gray-500 mb-6">This is used in making personalized results and plan for you.</Text>
               
-              <View className="items-center mb-8">
-                <View className="items-center w-full">
-                  <ScrollView
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{ paddingVertical: 60 }}
-                    style={{ height: 180 }}
-                    onMomentumScrollEnd={(event) => {
-                      const weights = Array.from({ length: 100 }, (_, i) => (i + 40).toString());
-                      handleScroll(event, setWeight, weights);
-                    }}
-                  >
-                    {Array.from({ length: 100 }, (_, i) => (i + 40).toString()).map((kg) => (
+              <TouchableOpacity 
+                onPress={nextStep}
+                className="bg-orange-400 p-4 rounded-lg items-center mt-6"
+                disabled={!heightFeet}
+              >
+                <Text className="text-white font-semibold">Next</Text>
+              </TouchableOpacity>
+            </View>
+          );
+          
+        case 3:
+          return (
+            <View className="flex-1 justify-center p-6 bg-gray-100">
+              <View className="bg-white rounded-xl p-6">
+                <Text className="text-xl font-bold mb-2">What's your Weight (in Kg)?</Text>
+                <Text className="text-gray-500 mb-6">This is used in making personalized results and plan for you.</Text>
+                
+                <View className="mb-8">
+                  {/* Weight input with increment/decrement controls */}
+                  <View className="flex-row items-center justify-between mb-8">
+                    <TouchableOpacity 
+                      onPress={() => {
+                        const currentWeight = parseInt(weight) || 60;
+                        if (currentWeight > 40) {
+                          setWeight((currentWeight - 1).toString());
+                        }
+                      }}
+                      className="w-12 h-12 bg-gray-200 rounded-full items-center justify-center"
+                    >
+                      <Ionicons name="remove" size={24} color="#666" />
+                    </TouchableOpacity>
+                    
+                    <View className="items-center">
+                      <TextInput
+                        className="text-4xl font-bold text-orange-500 min-w-32 text-center"
+                        value={weight}
+                        onChangeText={(text) => {
+                          // Only allow numbers
+                          const numericValue = text.replace(/[^0-9]/g, '');
+                          setWeight(numericValue);
+                        }}
+                        keyboardType="numeric"
+                        maxLength={3}
+                        placeholder="60"
+                        placeholderTextColor="#ccc"
+                      />
+                      <Text className="text-gray-500">kg</Text>
+                    </View>
+                    
+                    <TouchableOpacity 
+                      onPress={() => {
+                        const currentWeight = parseInt(weight) || 60;
+                        if (currentWeight < 150) {
+                          setWeight((currentWeight + 1).toString());
+                        }
+                      }}
+                      className="w-12 h-12 bg-gray-200 rounded-full items-center justify-center"
+                    >
+                      <Ionicons name="add" size={24} color="#666" />
+                    </TouchableOpacity>
+                  </View>
+                  
+                  {/* Common weight options */}
+                  <Text className="text-sm text-gray-500 mb-2">Common Weights</Text>
+                  <View className="flex-row flex-wrap justify-between">
+                    {[50, 60, 70, 80, 90, 100].map((kg) => (
                       <TouchableOpacity
                         key={`kg-${kg}`}
-                        onPress={() => setWeight(kg)}
-                        style={{ height: 60, justifyContent: 'center', alignItems: 'center' }}
+                        onPress={() => setWeight(kg.toString())}
+                        className={`w-16 h-12 mb-2 rounded-lg items-center justify-center ${weight === kg.toString() ? 'bg-orange-400' : 'bg-gray-200'}`}
                       >
-                        <Text 
-                          className={`text-xl ${weight === kg ? 'text-orange-500 font-bold' : 'text-gray-400'}`}
-                        >
-                          {kg}
+                        <Text className={`${weight === kg.toString() ? 'text-white font-bold' : 'text-gray-700'}`}>
+                          {kg} kg
                         </Text>
                       </TouchableOpacity>
                     ))}
-                  </ScrollView>
-                  <View 
-                    className="absolute top-1/2 h-[60px] w-full border-t border-b border-gray-200"
-                    style={{ transform: [{ translateY: -30 }] }}
-                  />
+                  </View>
                 </View>
               </View>
-            </View>
-            
-            <TouchableOpacity 
-              onPress={nextStep}
-              className="bg-orange-400 p-4 rounded-lg items-center mt-6"
-              disabled={!weight}
-            >
-              <Text className="text-white font-semibold">Next</Text>
-            </TouchableOpacity>
-          </View>
-        );
-        
-      case 4:
-        return (
-          <View className="flex-1 justify-center p-6 bg-gray-100">
-            <View className="bg-white rounded-xl p-6">
-              <Text className="text-xl font-bold mb-2">What's your age?</Text>
-              <Text className="text-gray-500 mb-6">This is used in making personalized results and plan for you.</Text>
               
-              <View className="items-center mb-8">
-                <View className="items-center w-full">
-                  <ScrollView
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{ paddingVertical: 60 }}
-                    style={{ height: 180 }}
-                    onMomentumScrollEnd={(event) => {
-                      const ages = Array.from({ length: 70 }, (_, i) => (i + 15).toString());
-                      handleScroll(event, setAge, ages);
-                    }}
-                  >
-                    {Array.from({ length: 70 }, (_, i) => (i + 15).toString()).map((ageNum) => (
+              <TouchableOpacity 
+                onPress={nextStep}
+                className="bg-orange-400 p-4 rounded-lg items-center mt-6"
+                disabled={!weight}
+              >
+                <Text className="text-white font-semibold">Next</Text>
+              </TouchableOpacity>
+            </View>
+          );
+          
+        case 4:
+          return (
+            <View className="flex-1 justify-center p-6 bg-gray-100">
+              <View className="bg-white rounded-xl p-6">
+                <Text className="text-xl font-bold mb-2">What's your age?</Text>
+                <Text className="text-gray-500 mb-6">This is used in making personalized results and plan for you.</Text>
+                
+                <View className="mb-8">
+                  {/* Age input with increment/decrement controls */}
+                  <View className="flex-row items-center justify-between mb-8">
+                    <TouchableOpacity 
+                      onPress={() => {
+                        const currentAge = parseInt(age) || 30;
+                        if (currentAge > 15) {
+                          setAge((currentAge - 1).toString());
+                        }
+                      }}
+                      className="w-12 h-12 bg-gray-200 rounded-full items-center justify-center"
+                    >
+                      <Ionicons name="remove" size={24} color="#666" />
+                    </TouchableOpacity>
+                    
+                    <View className="items-center">
+                      <TextInput
+                        className="text-4xl font-bold text-orange-500 min-w-24 text-center"
+                        value={age}
+                        onChangeText={(text) => {
+                          // Only allow numbers
+                          const numericValue = text.replace(/[^0-9]/g, '');
+                          setAge(numericValue);
+                        }}
+                        keyboardType="numeric"
+                        maxLength={2}
+                        placeholder="30"
+                        placeholderTextColor="#ccc"
+                      />
+                      <Text className="text-gray-500">years</Text>
+                    </View>
+                    
+                    <TouchableOpacity 
+                      onPress={() => {
+                        const currentAge = parseInt(age) || 30;
+                        if (currentAge < 85) {
+                          setAge((currentAge + 1).toString());
+                        }
+                      }}
+                      className="w-12 h-12 bg-gray-200 rounded-full items-center justify-center"
+                    >
+                      <Ionicons name="add" size={24} color="#666" />
+                    </TouchableOpacity>
+                  </View>
+                  
+                  {/* Age groups */}
+                  <Text className="text-sm text-gray-500 mb-2">Age Groups</Text>
+                  <View className="flex-row flex-wrap justify-between">
+                    {[18, 25, 35, 45, 55, 65].map((ageVal) => (
                       <TouchableOpacity
-                        key={`age-${ageNum}`}
-                        onPress={() => setAge(ageNum)}
-                        style={{ height: 60, justifyContent: 'center', alignItems: 'center' }}
+                        key={`age-${ageVal}`}
+                        onPress={() => setAge(ageVal.toString())}
+                        className={`w-16 h-12 mb-2 rounded-lg items-center justify-center ${age === ageVal.toString() ? 'bg-orange-400' : 'bg-gray-200'}`}
                       >
-                        <Text 
-                          className={`text-xl ${age === ageNum ? 'text-orange-500 font-bold' : 'text-gray-400'}`}
-                        >
-                          {ageNum}
+                        <Text className={`${age === ageVal.toString() ? 'text-white font-bold' : 'text-gray-700'}`}>
+                          {ageVal}
                         </Text>
                       </TouchableOpacity>
                     ))}
-                  </ScrollView>
-                  <View 
-                    className="absolute top-1/2 h-[60px] w-full border-t border-b border-gray-200"
-                    style={{ transform: [{ translateY: -30 }] }}
-                  />
+                  </View>
                 </View>
               </View>
+              
+              <TouchableOpacity 
+                onPress={nextStep}
+                className="bg-orange-400 p-4 rounded-lg items-center mt-6"
+                disabled={!age}
+              >
+                <Text className="text-white font-semibold">Next</Text>
+              </TouchableOpacity>
             </View>
-            
-            <TouchableOpacity 
-              onPress={nextStep}
-              className="bg-orange-400 p-4 rounded-lg items-center mt-6"
-              disabled={!age}
-            >
-              <Text className="text-white font-semibold">Next</Text>
-            </TouchableOpacity>
-          </View>
-        );
+          );
         
         case 5:
           // Calculate BMI category
@@ -523,55 +553,86 @@ export default function OnboardingScreen() {
           />
         );
         
-      case 7:
-        return (
-          <View className="flex-1 justify-center p-6 bg-gray-100">
-            <View className="bg-white rounded-xl p-6">
-              <Text className="text-xl font-bold mb-2">Set Your Step Goal</Text>
-              <Text className="text-gray-500 mb-6">This is used in making personalized results and plan for you.</Text>
-              
-              <View className="items-center mb-8">
-                <View className="items-center w-full">
-                  <ScrollView
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{ paddingVertical: 60 }}
-                    style={{ height: 180 }}
-                    onMomentumScrollEnd={(event) => {
-                      const steps = Array.from({ length: 10 }, (_, i) => ((i + 3) * 1000).toString());
-                      handleScroll(event, setStepGoal, steps);
-                    }}
-                  >
-                    {Array.from({ length: 10 }, (_, i) => ((i + 3) * 1000).toString()).map((steps) => (
+        case 7:
+          return (
+            <View className="flex-1 justify-center p-6 bg-gray-100">
+              <View className="bg-white rounded-xl p-6">
+                <Text className="text-xl font-bold mb-2">Set Your Step Goal</Text>
+                <Text className="text-gray-500 mb-6">This is used in making personalized results and plan for you.</Text>
+                
+                <View className="mb-8">
+                  {/* Step goal input with increment/decrement controls */}
+                  <View className="flex-row items-center justify-between mb-8">
+                    <TouchableOpacity 
+                      onPress={() => {
+                        const currentSteps = parseInt(stepGoal) || 10000;
+                        if (currentSteps > 3000) {
+                          setStepGoal((currentSteps - 1000).toString());
+                        }
+                      }}
+                      className="w-12 h-12 bg-gray-200 rounded-full items-center justify-center"
+                    >
+                      <Ionicons name="remove" size={24} color="#666" />
+                    </TouchableOpacity>
+                    
+                    <View className="items-center">
+                      <TextInput
+                        className="text-3xl font-bold text-orange-500 min-w-36 text-center"
+                        value={stepGoal}
+                        onChangeText={(text) => {
+                          // Only allow numbers
+                          const numericValue = text.replace(/[^0-9]/g, '');
+                          setStepGoal(numericValue);
+                        }}
+                        keyboardType="numeric"
+                        maxLength={5}
+                        placeholder="10000"
+                        placeholderTextColor="#ccc"
+                      />
+                      <Text className="text-gray-500">steps</Text>
+                    </View>
+                    
+                    <TouchableOpacity 
+                      onPress={() => {
+                        const currentSteps = parseInt(stepGoal) || 10000;
+                        if (currentSteps < 20000) {
+                          setStepGoal((currentSteps + 1000).toString());
+                        }
+                      }}
+                      className="w-12 h-12 bg-gray-200 rounded-full items-center justify-center"
+                    >
+                      <Ionicons name="add" size={24} color="#666" />
+                    </TouchableOpacity>
+                  </View>
+                  
+                  {/* Common step goal options */}
+                  <Text className="text-sm text-gray-500 mb-2">Common Step Goals</Text>
+                  <View className="flex-row flex-wrap justify-between">
+                    {[5000, 7500, 10000, 12000, 15000].map((steps) => (
                       <TouchableOpacity
                         key={`steps-${steps}`}
-                        onPress={() => setStepGoal(steps)}
-                        style={{ height: 60, justifyContent: 'center', alignItems: 'center' }}
+                        onPress={() => setStepGoal(steps.toString())}
+                        className={`px-3 py-2 mb-2 rounded-lg items-center justify-center ${stepGoal === steps.toString() ? 'bg-orange-400' : 'bg-gray-200'}`}
                       >
-                        <Text 
-                          className={`text-xl ${stepGoal === steps ? 'text-orange-500 font-bold' : 'text-gray-400'}`}
-                        >
-                          {steps} <Text className="text-sm text-gray-400">steps</Text>
+                        <Text className={`${stepGoal === steps.toString() ? 'text-white font-bold' : 'text-gray-700'}`}>
+                          {steps.toLocaleString()}
                         </Text>
                       </TouchableOpacity>
                     ))}
-                  </ScrollView>
-                  <View 
-                    className="absolute top-1/2 h-[60px] w-full border-t border-b border-gray-200"
-                    style={{ transform: [{ translateY: -30 }] }}
-                  />
+                  </View>
                 </View>
               </View>
+              
+              <TouchableOpacity 
+                onPress={nextStep}
+                className="bg-orange-400 p-4 rounded-lg items-center mt-6"
+                disabled={!stepGoal}
+              >
+                <Text className="text-white font-semibold">Next</Text>
+              </TouchableOpacity>
             </View>
-            
-            <TouchableOpacity 
-              onPress={nextStep}
-              className="bg-orange-400 p-4 rounded-lg items-center mt-6"
-              disabled={!stepGoal}
-            >
-              <Text className="text-white font-semibold">Next</Text>
-            </TouchableOpacity>
-          </View>
-        );
+          );
+          
         
       case 8:
         return (
@@ -844,11 +905,7 @@ case 13:
   
   return (
     <View className="flex-1 bg-gray-100">
-      <View className="p-4">
-        <TouchableOpacity className="bg-orange-400 rounded-full w-10 h-10 items-center justify-center">
-          <Ionicons name="chevron-back" size={24} color="white" />
-        </TouchableOpacity>
-      </View>
+      
       {renderStep()}
     </View>
   );

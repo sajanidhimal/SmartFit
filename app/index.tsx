@@ -44,6 +44,7 @@ export default function IndexScreen() {
               // Email not verified, redirect to verification screen
               console.log("Email not verified, going to verification screen");
               router.replace('/(auth)/verify-email');
+              
             } else {
               // Email is verified, check if they have a profile
               checkUserProfile(user.uid);

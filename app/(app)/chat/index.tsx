@@ -9,7 +9,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Keyboard
+  Keyboard,
+  StatusBar
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -149,9 +150,17 @@ export default function ChatScreen() {
   
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f9fafb' }}>
+      <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#e5e7eb', backgroundColor: 'white' }}>
-        <TouchableOpacity onPress={handleBack} style={{ padding: 8 }}>
-          <Ionicons name="chevron-back" size={28} color="#8A2BE2" />
+        <TouchableOpacity 
+          onPress={handleBack} 
+          style={{ 
+            padding: 8, 
+            borderRadius: 20, 
+            backgroundColor: '#f3f4f6'
+          }}
+        >
+          <Ionicons name="chevron-back" size={24} color="#8A2BE2" />
         </TouchableOpacity>
         <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#8A2BE2', marginLeft: 12 }}>Fitness Coach</Text>
       </View>
@@ -159,21 +168,31 @@ export default function ChatScreen() {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 120 : 0}
       >
         <FlatList
           ref={flatListRef}
           data={messages}
           keyExtractor={item => item.id}
           renderItem={({ item }) => <ChatMessageComponent message={item} />}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
         />
         
-        <View style={{ padding: 8, borderTopWidth: 1, borderTopColor: '#e5e7eb', backgroundColor: 'white' }}>
+        <View style={{ 
+          padding: 12, 
+          borderTopWidth: 1, 
+          borderTopColor: '#e5e7eb', 
+          backgroundColor: 'white', 
+          position: 'absolute',
+          bottom: 0,
+          left: 0, 
+          right: 0,
+          paddingBottom: Platform.OS === 'ios' ? 30 : 12
+        }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f1f5f9', borderRadius: 24, paddingHorizontal: 16, paddingVertical: 4 }}>
             <TextInput
-              style={{ flex: 1, paddingVertical: 8, paddingHorizontal: 4, fontSize: 16, color: '#1f2937' }}
+              style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 4, fontSize: 16, color: '#1f2937', maxHeight: 100 }}
               placeholder="Ask me about fitness, nutrition, or health..."
               value={userInput}
               onChangeText={setUserInput}
@@ -186,7 +205,7 @@ export default function ChatScreen() {
               disabled={isSending || !userInput.trim()}
               style={{ 
                 marginLeft: 8, 
-                padding: 8, 
+                padding: 10, 
                 borderRadius: 20,
                 backgroundColor: userInput.trim() ? '#8A2BE2' : '#d1d5db'
               }}
@@ -194,7 +213,7 @@ export default function ChatScreen() {
               {isSending ? (
                 <ActivityIndicator size="small" color="#ffffff" />
               ) : (
-                <Ionicons name="send" size={20} color="white" />
+                <Ionicons name="send" size={22} color="white" />
               )}
             </TouchableOpacity>
           </View>

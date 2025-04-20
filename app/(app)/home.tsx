@@ -647,9 +647,10 @@ export default function HomeScreen() {
 
   return (
     <NutritionContext.Provider value={nutritionContextValue}>
-      <SafeAreaView className="flex-1 bg-gray-50">
+      <SafeAreaView className="flex-1 bg-gray-50" style={{ paddingBottom: 70 }}>
         <ScrollView 
           className="flex-1"
+          contentContainerStyle={{ paddingBottom: 20 }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }

@@ -1,14 +1,20 @@
 import React, { useEffect } from 'react';
 import { View } from 'react-native';
-import { Tabs } from 'expo-router';
+import { Tabs, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { doc, getDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../firebase';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 export default function AppLayout() {
   const [refreshing, setRefreshing] = React.useState(false);
+  const pathname = usePathname();
+  
+  // Determine if we're on the chat screen
+  const isOnChatScreen = pathname === "/chat/index" || pathname === "/chat";
+  
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
     setTimeout(() => {
@@ -44,7 +50,7 @@ export default function AppLayout() {
   }, []);
 
   return (
-    <>
+    <SafeAreaProvider>
       <StatusBar style="dark" />
       <Tabs
         screenOptions={{
@@ -55,6 +61,7 @@ export default function AppLayout() {
             borderTopWidth: 1,
             borderTopColor: '#f0f0f0',
             paddingBottom: 10,
+            display: isOnChatScreen ? 'none' : 'flex', // Hide tab bar on chat screen
           },
           tabBarShowLabel: false,
           tabBarActiveTintColor: '#8A2BE2',
@@ -121,6 +128,7 @@ export default function AppLayout() {
           name="chat/index" 
           options={{
             href: null,
+            tabBarStyle: { display: 'none' }
           }}
         />
         <Tabs.Screen 
@@ -136,6 +144,6 @@ export default function AppLayout() {
           }}
         />
       </Tabs>
-    </>
+    </SafeAreaProvider>
   );
 }
