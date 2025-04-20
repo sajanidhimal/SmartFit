@@ -373,7 +373,7 @@ export default function StatsScreen() {
   }
   
   return (
-    <SafeAreaView className="flex-1 bg-gray-100">
+    <SafeAreaView className="flex-1 bg-gray-100" style={{ paddingBottom: 70 }}>
       <View className="p-4">
         <Text className="text-2xl font-bold text-gray-800">Stats</Text>
         <Text className="text-gray-500">Your fitness analytics and progress</Text>

@@ -803,8 +803,8 @@ export default function HomeScreen() {
             
             <TouchableOpacity 
               className="w-12 h-12 bg-blue-500 rounded-lg items-center justify-center"
-                 onPress={addWater}
-              // onPress={()=>seedDefaultExerciseDatabase()}
+                  onPress={addWater}
+// onPress={()=>seedDefaultFoodDatabase()}
             >
               <Ionicons name="add" size={32} color="white" />
             </TouchableOpacity>
