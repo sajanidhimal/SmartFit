@@ -136,11 +136,11 @@ export default function FitnessScreen() {
             <Text className="text-xl font-bold text-orange-500">Workouts</Text>
           </View>
           <View className="flex-1 items-center bg-white rounded-lg p-4">
-            <Text className="text-3xl font-bold text-gray-800">{totalCaloriesBurned}</Text>
+            <Text className="text-3xl font-bold text-gray-800">{totalCaloriesBurned.toFixed(0)}</Text>
             <Text className="text-xl font-bold text-orange-500">Kcals</Text>
           </View>
           <View className="flex-1 items-center bg-white rounded-lg p-4">
-            <Text className="text-3xl font-bold text-gray-800">{totalWorkoutMinutes}</Text>
+            <Text className="text-3xl font-bold text-gray-800">{totalWorkoutMinutes.toFixed(0)}</Text>
             <Text className="text-xl font-bold text-orange-500">Minutes</Text>
           </View>
         </View>

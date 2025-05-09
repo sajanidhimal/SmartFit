@@ -243,4 +243,107 @@ export const updateUserProfile = async (
   }
 };
 
+// Update weight with recalculated targets
+export const updateUserWeightWithTargets = async (
+  userId: string,
+  newWeight: number | string
+): Promise<Result> => {
+  try {
+    const weightVal = parseFloat(String(newWeight));
+    
+    // Get current user profile to access other parameters needed for calculations
+    const userRef = doc(db, "userProfiles", userId);
+    const userSnap = await getDoc(userRef);
+    
+    if (!userSnap.exists()) {
+      return { success: false, error: "User profile not found" };
+    }
+    
+    const userData = userSnap.data();
+    
+    // Calculate BMI
+    const heightInMeters = userData.height / 100;
+    const bmi = weightVal / (heightInMeters * heightInMeters);
+    
+    // Calculate daily calorie goal
+    const bmr = userData.gender.toLowerCase() === 'male'
+      ? 10 * weightVal + 6.25 * userData.height - 5 * userData.age + 5
+      : 10 * weightVal + 6.25 * userData.height - 5 * userData.age - 161;
+    
+    // Apply activity multiplier
+    const activityMultipliers: {[key: string]: number} = {
+      'sedentary': 1.2,
+      'light': 1.375,
+      'moderate': 1.55,
+      'active': 1.725,
+      'very active': 1.9
+    };
+    
+    // Normalize activity level (handle different formats)
+    const normalizedActivityLevel = userData.activityLevel.toLowerCase().replace('_', ' ');
+    const multiplier = activityMultipliers[normalizedActivityLevel] || 1.2;
+    const tdee = Math.round(bmr * multiplier);
+    
+    // Adjust based on weight goal
+    const targetWeight = userData.targetWeight;
+    const weightDiff = weightVal - targetWeight;
+    let calorieAdjustment = 0;
+    
+    if (weightDiff > 0) {
+      // For weight loss
+      calorieAdjustment = -500; // Calorie deficit
+    } else if (weightDiff < 0) {
+      // For weight gain
+      calorieAdjustment = 300; // Calorie surplus
+    }
+    
+    const dailyCalorieGoal = Math.round(tdee + calorieAdjustment);
+    
+    // Calculate weeks to goal based on safe weight change rate
+    // Safe rate: 0.5-1kg per week for weight loss, 0.25-0.5kg for weight gain
+    const weeklyRate = weightDiff > 0 ? 0.75 : weightDiff < 0 ? 0.5 : 0;
+    const weeksToGoal = weeklyRate !== 0 ? Math.abs(weightDiff / weeklyRate) : 0;
+    
+    // Calculate goal achievement date
+    const goalDate = new Date();
+    goalDate.setDate(goalDate.getDate() + Math.round(weeksToGoal * 7));
+    
+    // Update document with new values
+    await updateDoc(userRef, {
+      weight: weightVal,
+      bmi: parseFloat(bmi.toFixed(1)),
+      bmr: Math.round(bmr),
+      dailyCalorieGoal,
+      weightChangePerWeek: weeklyRate !== 0 ? `${weeklyRate} kg` : '0 kg',
+      goalAchieveDate: goalDate.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      }),
+      updatedAt: serverTimestamp(),
+    });
+
+    // Add to weight history
+    await addDoc(collection(db, "userProfiles", userId, "weightHistory"), {
+      weight: weightVal,
+      date: serverTimestamp(),
+    });
+
+    return { 
+      success: true, 
+      data: {
+        weight: weightVal,
+        bmi: parseFloat(bmi.toFixed(1)),
+        dailyCalorieGoal,
+        weightDiff: weightDiff,
+        targetWeight: targetWeight,
+        goalType: weightDiff > 0 ? 'lose' : weightDiff < 0 ? 'gain' : 'maintain'
+      }
+    };
+  } catch (error: any) {
+    console.error("Error updating weight with targets:", error);
+    return { success: false, error: error.message };
+  }
+};
+
 

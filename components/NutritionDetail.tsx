@@ -414,35 +414,58 @@ export default function NutritionTracker({ userId, selectedDate, onDataUpdate }:
         <View style={{ marginTop: 8 }}>
           <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 32 }}>{selectedPeriod} Progress</Text>
           <View style={{ height: 160, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-            {getProgressData(type).map((item, index) => (
-              <View key={index} style={{ alignItems: 'center' }}>
-                <View
-                  style={{
-                    width: 32,
-                    backgroundColor: `${color}20`,
-                    borderTopLeftRadius: 8,
-                    borderTopRightRadius: 8,
-                    height: `${item.total}%`,
-                  }}
-                >
+            {getProgressData(type).map((item, index) => {
+              const isExceeded = item.actual > 100;
+              const displayHeight = Math.min(item.actual, 100);
+              
+              return (
+                <View key={index} style={{ alignItems: 'center' }}>
                   <View
                     style={{
-                      width: '100%',
-                      backgroundColor: color === 'secondary' ? '#f8a100' : color,
+                      width: 32,
+                      backgroundColor: `${color}20`,
                       borderTopLeftRadius: 8,
                       borderTopRightRadius: 8,
-                      height: `${item.actual}%`,
-                      bottom: 0,
-                      position: 'absolute',
+                      height: '100%',
+                      position: 'relative',
                     }}
-                  />
+                  >
+                    <View
+                      style={{
+                        width: '100%',
+                        backgroundColor: color === 'secondary' ? '#f8a100' : color,
+                        borderTopLeftRadius: 8,
+                        borderTopRightRadius: 8,
+                        height: `${displayHeight}%`,
+                        bottom: 0,
+                        position: 'absolute',
+                      }}
+                    />
+                    {isExceeded && (
+                      <View
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: 4,
+                          backgroundColor: '#ef4444',
+                          borderTopLeftRadius: 4,
+                          borderTopRightRadius: 4,
+                        }}
+                      />
+                    )}
+                  </View>
+                  <Text style={{ fontSize: 12, color: '#666', marginTop: 4 }}>{item.label}</Text>
+                  {item.rawValue > 0 && (
+                    <Text style={{ fontSize: 10, color: isExceeded ? '#ef4444' : '#888' }}>
+                      {item.rawValue}
+                      {isExceeded && ' ⚠️'}
+                    </Text>
+                  )}
                 </View>
-                <Text style={{ fontSize: 12, color: '#666', marginTop: 4 }}>{item.label}</Text>
-                {item.rawValue > 0 && (
-                  <Text style={{ fontSize: 10, color: '#888' }}>{item.rawValue}</Text>
-                )}
-              </View>
-            ))}
+              );
+            })}
           </View>
           
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16, marginBottom: 8 }}>

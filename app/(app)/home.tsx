@@ -1,6 +1,6 @@
 //home.tsx
 import React, { useEffect, useState, useCallback, createContext, useContext } from 'react';
-import { View, Text, ScrollView, SafeAreaView, TouchableOpacity, Alert, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, SafeAreaView, TouchableOpacity, Alert, RefreshControl, Modal, TextInput, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import CircularProgress from '../../components/CircularProgress';
@@ -14,7 +14,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Import your Firebase functions
 import { 
   getUserProfile, 
-  UserProfile as BaseUserProfile
+  UserProfile as BaseUserProfile,
+  updateUserWeightWithTargets
 } from '../utils/database_service/profile_functions';
 import { 
   getFoodIntakeByDate, 
@@ -34,10 +35,21 @@ import { auth, db } from '../firebase';
 const WATER_STORAGE_KEY = 'daily_water_intake';
 const MIN_RECOMMENDED_WATER = 4; // Minimum recommended water intake in liters
 
-// Extend the base UserProfile to include the fields used in our app
-interface UserProfile extends BaseUserProfile {
+// Define our own UserProfile interface
+interface UserProfile {
+  gender?: string;
+  height?: number | string;
+  weight?: number | string;
+  age?: number | string;
+  activityLevel?: string;
+  targetWeight?: number | string;
+  workoutFrequency?: string;
+  healthConcerns?: string;
   dailyCalorieGoal?: number;
   name?: string;
+  bmi?: number | string;
+  weightDiff?: number;
+  goalType?: string;
 }
 
 interface MacroNutrient {
@@ -112,6 +124,15 @@ export default function HomeScreen() {
 
   // Add a state to track if food was added
   const [foodAdded, setFoodAdded] = useState(false);
+
+  // Add states for weight update modal
+  const [weightModalVisible, setWeightModalVisible] = useState(false);
+  const [newWeight, setNewWeight] = useState('');
+  const [progressMessage, setProgressMessage] = useState<{
+    message: string;
+    type: 'success' | 'warning' | 'info';
+  } | null>(null);
+  const [isUpdatingWeight, setIsUpdatingWeight] = useState(false);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -637,6 +658,98 @@ export default function HomeScreen() {
     notifyFoodAdded
   };
 
+  // Add weight update function
+  const updateWeight = async () => {
+    if (!userId || !newWeight || parseFloat(newWeight) <= 0) {
+      Alert.alert('Error', 'Please enter a valid weight');
+      return;
+    }
+    
+    setIsUpdatingWeight(true);
+    try {
+      const result = await updateUserWeightWithTargets(userId, newWeight);
+      
+      if (result.success && result.data) {
+        // Update local state with new data
+        const data = result.data;
+        
+        // Update userProfile state
+        setUserProfile(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            weight: data.weight,
+            bmi: data.bmi,
+            dailyCalorieGoal: data.dailyCalorieGoal
+          };
+        });
+        
+        // Update calorie goals in dailyStats
+        setDailyStats(prev => ({
+          ...prev,
+          calories: {
+            ...prev.calories,
+            total: data.dailyCalorieGoal,
+            remaining: data.dailyCalorieGoal - prev.calories.eaten + prev.calories.burned
+          },
+          macros: {
+            protein: { 
+              ...prev.macros.protein, 
+              goal: Math.round(data.dailyCalorieGoal * 0.3 / 4) // 30% of calories from protein
+            },
+            fats: { 
+              ...prev.macros.fats, 
+              goal: Math.round(data.dailyCalorieGoal * 0.25 / 9) // 25% of calories from fat
+            },
+            carbs: { 
+              ...prev.macros.carbs, 
+              goal: Math.round(data.dailyCalorieGoal * 0.45 / 4) // 45% of calories from carbs
+            }
+          }
+        }));
+        
+        // Set progress message based on goal type
+        const currentWeight = data.weight;
+        const targetWeight = data.targetWeight;
+        const weightDiff = Math.abs(data.weightDiff);
+        
+        if (data.goalType === 'lose') {
+          setProgressMessage({
+            message: `You are ${weightDiff.toFixed(1)} kg away from your goal weight of ${targetWeight} kg. Keep up the good work!`,
+            type: 'info'
+          });
+        } else if (data.goalType === 'gain') {
+          setProgressMessage({
+            message: `You need to gain ${weightDiff.toFixed(1)} kg to reach your goal weight of ${targetWeight} kg. Stay consistent!`,
+            type: 'info'
+          });
+        } else {
+          setProgressMessage({
+            message: `Congratulations! You've reached your target weight of ${targetWeight} kg.`,
+            type: 'success'
+          });
+        }
+        
+        // Close modal after a delay to show the message
+        setTimeout(() => {
+          setWeightModalVisible(false);
+          // Reload data to refresh all stats
+          loadUserData();
+          loadDailyData(selectedDate);
+        }, 2000);
+      } else {
+        Alert.alert('Error', result.error || 'Failed to update weight');
+        setWeightModalVisible(false);
+      }
+    } catch (error) {
+      console.error('Error updating weight:', error);
+      Alert.alert('Error', 'An error occurred while updating weight');
+      setWeightModalVisible(false);
+    } finally {
+      setIsUpdatingWeight(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <SafeAreaView className="flex-1 bg-gray-100 w-full items-center justify-center">
@@ -703,10 +816,10 @@ export default function HomeScreen() {
                 />
               </View>
               <TouchableOpacity 
-    className="flex-1 justify-center space-y-4"
-    onPress={() => router.push('/(food)')}
-  >
-              <View  className="flex-1 justify-center space-y-4">
+                className="flex-1 justify-center space-y-4"
+                onPress={() => router.push('/(food)')}
+              >
+              <View className="flex-1 justify-center space-y-4">
                 <View>
                   <Text className="text-gray-500">Eaten</Text>
                   <Text className="text-xl">
@@ -728,8 +841,7 @@ export default function HomeScreen() {
                   </Text>
                 </View>
               </View>
-              </TouchableOpacity 
-              >
+              </TouchableOpacity>
             </View>
 
             {/* Macro Nutrients */}
@@ -810,6 +922,35 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
          
+          {/* Weight Update Card - Add this section */}
+          <View className="bg-white rounded-lg p-4 flex-row items-center justify-between shadow mb-4 w-full">
+            <View className="flex-row items-center">
+              <View className="w-12 h-12 bg-purple-100 rounded-full justify-center items-center mr-4">
+                <Ionicons name="trending-down" size={24} color="#8A2BE2" />
+              </View>
+              <View>
+                <Text className="text-lg font-medium text-gray-700">Weight Tracking</Text>
+                <Text className="text-gray-500">
+                  Current: {userProfile?.weight || '0'} kg
+                </Text>
+                <Text className="text-gray-500">
+                  Target: {userProfile?.targetWeight || '0'} kg
+                </Text>
+              </View>
+            </View>
+            
+            <TouchableOpacity 
+              className="bg-purple-100 p-3 rounded-full"
+              onPress={() => {
+                setNewWeight(userProfile?.weight?.toString() || '');
+                setProgressMessage(null);
+                setWeightModalVisible(true);
+              }}
+            >
+              <Ionicons name="create-outline" size={24} color="#8A2BE2" />
+            </TouchableOpacity>
+          </View>
+          
           <NutritionTracker 
             userId={userId!} 
             selectedDate={selectedDate}
@@ -839,6 +980,101 @@ export default function HomeScreen() {
             </View>
           </View>
         </ScrollView>
+        
+        {/* Weight Update Modal */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={weightModalVisible}
+          onRequestClose={() => setWeightModalVisible(false)}
+        >
+          <View className="flex-1 justify-center items-center bg-black/50">
+            <View className="bg-white rounded-xl p-5 w-4/5 items-center">
+              <Text className="text-xl font-bold mb-6">Update Weight</Text>
+              
+              {progressMessage ? (
+                <View className={`p-4 rounded-lg w-full mb-4 ${
+                  progressMessage.type === 'success' ? 'bg-green-100' : 
+                  progressMessage.type === 'warning' ? 'bg-yellow-100' : 'bg-blue-100'
+                }`}>
+                  <Text className={`${
+                    progressMessage.type === 'success' ? 'text-green-800' : 
+                    progressMessage.type === 'warning' ? 'text-yellow-800' : 'text-blue-800'
+                  }`}>
+                    {progressMessage.message}
+                  </Text>
+                </View>
+              ) : (
+                <View className="flex-row items-center justify-center mb-6">
+                  <TouchableOpacity
+                    className="w-10 h-10 rounded-full bg-gray-100 justify-center items-center"
+                    onPress={() => {
+                      const weight = parseFloat(newWeight || '0');
+                      if (weight > 0) {
+                        setNewWeight((weight - 0.1).toFixed(1));
+                      }
+                    }}
+                  >
+                    <Text className="text-2xl font-bold text-purple-500">-</Text>
+                  </TouchableOpacity>
+                  
+                  <View className="mx-4">
+                    <TextInput
+                      className="w-20 text-center text-3xl font-bold border-b-2 border-purple-500"
+                      value={newWeight}
+                      onChangeText={(text) => {
+                        // Only allow numbers and one decimal point
+                        const filtered = text.replace(/[^0-9.]/g, '');
+                        const parts = filtered.split('.');
+                        if (parts.length > 2) {
+                          // More than one decimal point, keep only the first one
+                          setNewWeight(parts[0] + '.' + parts[1]);
+                        } else {
+                          setNewWeight(filtered);
+                        }
+                      }}
+                      keyboardType="numeric"
+                      placeholder="0"
+                    />
+                    <Text className="text-center text-gray-500 mt-1">kg</Text>
+                  </View>
+                  
+                  <TouchableOpacity
+                    className="w-10 h-10 rounded-full bg-gray-100 justify-center items-center"
+                    onPress={() => {
+                      const weight = parseFloat(newWeight || '0');
+                      setNewWeight((weight + 0.1).toFixed(1));
+                    }}
+                  >
+                    <Text className="text-2xl font-bold text-purple-500">+</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              
+              <View className="flex-row justify-between w-full">
+                <TouchableOpacity
+                  className="flex-1 bg-gray-200 rounded-lg py-3 mr-2 items-center"
+                  onPress={() => setWeightModalVisible(false)}
+                  disabled={isUpdatingWeight}
+                >
+                  <Text className="text-gray-700 font-medium">Cancel</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  className="flex-1 bg-purple-500 rounded-lg py-3 ml-2 items-center"
+                  onPress={updateWeight}
+                  disabled={isUpdatingWeight || progressMessage !== null}
+                >
+                  {isUpdatingWeight ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Text className="text-white font-medium">Update</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </NutritionContext.Provider>
   );
